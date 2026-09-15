@@ -23,6 +23,14 @@ Kibana. Security is disabled — a throwaway node on localhost, nothing more.
 
 Tear down with `docker compose -f demo/docker-compose.yml down -v`.
 
+Elasticsearch data lives in a named volume. Without one, recreating the
+container — which `docker compose up -d` does after any change to its settings —
+wipes the data directory, including the `.kibana*` system indices. Kibana still
+believes its migration ran, so it serves `500 Internal Server Error` with
+`Saved object [space/default] not found` in the logs. If that happens, restart
+Kibana (`docker restart uz-kibana`) and it re-migrates, then re-index the demo
+documents.
+
 ## The ten documents
 
 | # | title | why it is here |

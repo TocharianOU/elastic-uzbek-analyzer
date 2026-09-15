@@ -16,6 +16,11 @@ services:
     # 512m heap, but Elasticsearch also needs off-heap for Lucene; 1g leaves it
     # sitting at 98% of the limit.
     mem_limit: 1280m
+    # Named volume, or recreating this container wipes the data directory —
+    # including the .kibana* system indices, which leaves Kibana serving 500s
+    # because it believes its migration already ran.
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
     healthcheck:
@@ -36,3 +41,6 @@ services:
     mem_limit: 1g
     ports:
       - "5601:5601"
+
+volumes:
+  es-data:
