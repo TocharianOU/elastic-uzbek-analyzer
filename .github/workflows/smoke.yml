@@ -3,65 +3,120 @@ name: Smoke test against a real Elasticsearch
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
+# A unit test cannot catch a bad plugin descriptor, a resource missing from the
+# packaged jar, or a component that fails to register. Installing the plugin into
+# a real node can.
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - es-major: "8"
+            build-with: "8.7.0"
+            lucene: "9.5.0"
+            java: "17"
+            run-on: "8.7.0"
+          # Same artifact, newer node: the stable plugin API is supposed to carry
+          # across the whole major, and this is what proves it.
+          - es-major: "8"
+            build-with: "8.7.0"
+            lucene: "9.5.0"
+            java: "17"
+            run-on: "8.19.15"
+          - es-major: "9"
+            build-with: "9.4.0"
+            lucene: "10.4.0"
+            java: "24"
+            run-on: "9.4.0"
+    name: built for ${{ matrix.build-with }}, running on ${{ matrix.run-on }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
-
-      - uses: gradle/actions/setup-gradle@v4
+          java-version: ${{ matrix.java }}
 
       - name: Build the plugin
-        run: ./gradlew assemble
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.es-major }}" = "9" ]; then
+            curl -fsSL https://services.gradle.org/distributions/gradle-8.14-bin.zip -o /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp
+            GRADLE=/tmp/gradle-8.14/bin/gradle
+          else
+            GRADLE=./gradlew
+          fi
+          "$GRADLE" assemble \
+            -PesMajor=${{ matrix.es-major }} \
+            -PelasticsearchVersion=${{ matrix.build-with }} \
+            -PluceneVersion=${{ matrix.lucene }}
 
-      # A unit test cannot catch a bad plugin descriptor, a missing resource in
-      # the packaged jar, or a component that fails to register. Installing it
-      # into a real node can.
       - name: Start Elasticsearch with the plugin installed
         run: |
-          set -eux
-          ZIP=$(ls build/distributions/*.zip)
-          docker run -d --name es \
+          set -euxo pipefail
+          ZIP=$(ls build/distributions/*.zip | head -1)
+          docker run -d --name es -p 9200:9200 \
             -e discovery.type=single-node \
             -e xpack.security.enabled=false \
             -e ES_JAVA_OPTS="-Xms512m -Xmx512m" \
-            -p 9200:9200 \
-            docker.elastic.co/elasticsearch/elasticsearch:8.19.15
-          until curl -fs localhost:9200/_cluster/health >/dev/null; do sleep 3; done
-          docker cp "$ZIP" es:/tmp/plugin.zip
-          docker exec es bin/elasticsearch-plugin install --batch file:///tmp/plugin.zip
-          docker restart es
-          until curl -fs localhost:9200/_cluster/health >/dev/null; do sleep 3; done
-          curl -s 'localhost:9200/_cat/plugins?v'
+            -v "$PWD/$ZIP:/tmp/plugin.zip:ro" \
+            docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.run-on }} \
+            bash -lc 'bin/elasticsearch-plugin install --batch file:///tmp/plugin.zip && exec bin/elasticsearch'
+
+          for _ in $(seq 1 90); do
+            # Wait for a real status. A node that answers while still recovering
+            # rejects the next request with "state not recovered".
+            if curl -fsS 'localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' >/dev/null; then
+              curl -fsS 'localhost:9200/_cat/plugins?v' | grep -q uzbek-analyzer-plugin
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs es
+          exit 1
 
       - name: Latin and Cyrillic must produce the same terms
         run: |
-          set -eux
+          set -euxo pipefail
           terms() {
-            curl -sf localhost:9200/_analyze -H 'Content-Type: application/json' \
-              -d "{\"analyzer\":\"uzbek\",\"text\":\"$1\"}" \
+            curl -fsS localhost:9200/_analyze -H 'Content-Type: application/json' \
+              --data-binary "{\"analyzer\":\"uzbek\",\"text\":\"$1\"}" \
             | python3 -c 'import sys,json;print(" ".join(t["token"] for t in json.load(sys.stdin)["tokens"]))'
           }
-          LAT=$(terms "Telefon uchun qopqogʻi")
-          CYR=$(terms "Телефон учун қопқоғи")
+          LAT=$(terms 'Telefon uchun qopqogʻi')
+          CYR=$(terms 'Телефон учун қопқоғи')
           echo "latin:    $LAT"
           echo "cyrillic: $CYR"
           test "$LAT" = "$CYR"
+          test "$LAT" = "telefon ucun qopqoq"
+
+      - name: Every spelling of one word folds together
+        run: |
+          set -euxo pipefail
+          for SPELLING in "qopqogʻi" "qopqog'i" "qopqogi" "qopqoği" "қопқоғи"; do
+            curl -fsS localhost:9200/_analyze -H 'Content-Type: application/json' \
+              --data-binary "{\"analyzer\":\"uzbek\",\"text\":\"$SPELLING\"}" \
+            | grep -q '"token":"qopqoq"'
+          done
 
       - name: Model codes must survive whole
         run: |
-          set -eux
-          curl -sf localhost:9200/_analyze -H 'Content-Type: application/json' \
-            -d '{"analyzer":"uzbek","text":"SM-G998B 128GB"}' \
-          | grep -q 'sm-g998b'
+          set -euxo pipefail
+          curl -fsS localhost:9200/_analyze -H 'Content-Type: application/json' \
+            -d '{"analyzer":"uzbek","text":"SM-G998B 128GB"}' | tee out.json
+          grep -q '"token":"sm-g998b"' out.json
+          grep -q '"token":"128gb"' out.json
 
       - name: Elasticsearch logs on failure
         if: failure()
-        run: docker logs es | tail -100
+        run: docker logs es || true
+
+      - name: Stop Elasticsearch
+        if: always()
+        run: docker rm -f es || true

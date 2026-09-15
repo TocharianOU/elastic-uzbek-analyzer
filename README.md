@@ -26,9 +26,13 @@ today each spelling finds only itself.
 ## Install
 
 ```bash
-./gradlew assemble                                    # ES 8.x, Java 17
-./gradlew assemble -PelasticsearchVersion=9.4.0 \
-                   -PluceneVersion=10.4.0 -PesMajor=9  # ES 9.x, Java 21
+# Elasticsearch 8.x — Java 17, the committed wrapper
+./gradlew assemble
+
+# Elasticsearch 9.x — Java 21 or later, which needs Gradle 8.x. The wrapper here
+# is 7.6.1 and cannot run on Java 21 ("Unsupported class file major version"), so
+# use a newer Gradle for this one.
+gradle assemble -PesMajor=9 -PelasticsearchVersion=9.4.0 -PluceneVersion=10.4.0
 
 bin/elasticsearch-plugin install file:///path/to/build/distributions/uzbek-analyzer-plugin-0.1.0-es8.zip
 ```

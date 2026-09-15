@@ -13,13 +13,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - es: "8.7.0"
+          - es-major: "8"
+            elasticsearch: "8.7.0"
             lucene: "9.5.0"
             java: "17"
-          - es: "9.4.0"
+          - es-major: "9"
+            elasticsearch: "9.4.0"
             lucene: "10.4.0"
-            java: "21"
-    name: Elasticsearch ${{ matrix.es }} (Java ${{ matrix.java }})
+            java: "24"
+    name: Elasticsearch ${{ matrix.elasticsearch }} (Java ${{ matrix.java }})
     steps:
       - uses: actions/checkout@v4
 
@@ -28,28 +30,44 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/wrapper-validation@v4
 
-      - name: Test
-        run: >
-          ./gradlew test
-          -PelasticsearchVersion=${{ matrix.es }}
-          -PluceneVersion=${{ matrix.lucene }}
+      - name: Build and test
+        run: |
+          set -euo pipefail
+          # The committed wrapper is Gradle 7.6.1, which cannot run on Java 21 or
+          # later — it fails with "Unsupported class file major version". The
+          # Elasticsearch 9 build needs a newer JDK, so that leg fetches a Gradle
+          # that supports it instead of using the wrapper.
+          if [ "${{ matrix.es-major }}" = "9" ]; then
+            curl -fsSL https://services.gradle.org/distributions/gradle-8.14-bin.zip -o /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp
+            GRADLE=/tmp/gradle-8.14/bin/gradle
+          else
+            GRADLE=./gradlew
+          fi
 
-      - name: Assemble plugin
-        run: >
-          ./gradlew assemble
-          -PelasticsearchVersion=${{ matrix.es }}
-          -PluceneVersion=${{ matrix.lucene }}
+          "$GRADLE" clean check assemble \
+            -PesMajor=${{ matrix.es-major }} \
+            -PelasticsearchVersion=${{ matrix.elasticsearch }} \
+            -PluceneVersion=${{ matrix.lucene }}
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: uzbek-analyzer-plugin-es${{ matrix.es }}
-          path: build/distributions/*.zip
-
-      - name: Publish test report on failure
-        if: failure()
+      # Storage is a shared account quota, and running out of it says nothing
+      # about the code. Keep the artifact when there is room, but never let its
+      # absence turn a passing build red.
+      - name: Upload plugin
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-es${{ matrix.es }}
+          name: uzbek-analyzer-plugin-es${{ matrix.es-major }}
+          path: build/distributions/*.zip
+          retention-days: 7
+
+      - name: Upload test report
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-es${{ matrix.es-major }}
           path: build/reports/tests/test
+          retention-days: 3
