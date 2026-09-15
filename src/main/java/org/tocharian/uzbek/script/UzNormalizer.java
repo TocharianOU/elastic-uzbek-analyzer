@@ -264,7 +264,7 @@ public final class UzNormalizer {
     // ------------------------------------------------------------ Arabic
 
     /**
-     * Southern Uzbek (ISO {@code uzs}, Afghanistan). Not implemented yet: it needs
+     * Perso-Arabic script, ISO 639-3 {@code uzs}. Not implemented yet: it needs
      * vowel restoration from an unvocalised abjad, ZWNJ handling and
      * presentation-form folding, which is a layer of work on its own. Passed
      * through unchanged and flagged so nothing downstream mistakes it for

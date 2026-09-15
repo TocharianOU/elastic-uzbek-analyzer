@@ -121,7 +121,7 @@ is set from this measurement, not from intuition.
 
 ## Known limitations
 
-- **Arabic script (Southern Uzbek) is passthrough.** Needs vowel restoration
+- **Perso-Arabic (`uzs`) is passthrough.** Needs vowel restoration
   from an unvocalised abjad plus presentation-form folding. Flagged in the
   result's `ambiguities` so nothing downstream mistakes it for normalized text.
 - **Offsets assume NFC input.** `srcIndex` is measured after NFC; NFC is

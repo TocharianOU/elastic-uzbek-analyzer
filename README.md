@@ -16,7 +16,7 @@ Uzbek is written four ways at once, and a product catalogue contains all of them
 | Latin 1995 | `qopqogʻi` |
 | Latin 2026 | `qopqoği` |
 | Cyrillic | `қопқоғи` |
-| Arabic (Southern Uzbek) | Afghanistan |
+| Perso-Arabic (`uzs`) | قوپقوغی |
 
 The Latin apostrophe alone arrives in a dozen spellings, or not at all:
 `qopqogʻi` `qopqog'i` `qopqog'i` `qopqog\`i` `qopqogi`. Every one of these is the

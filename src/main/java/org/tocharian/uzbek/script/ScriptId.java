@@ -22,7 +22,7 @@ public enum ScriptId {
     /** Uzbek Cyrillic: marked by {@code ў қ ғ ҳ}. */
     UZ_CYRL(true),
 
-    /** Arabic script (Southern Uzbek, ISO {@code uzs}), Afghanistan. */
+    /** Perso-Arabic script, as used for the {@code uzs} variety. */
     UZ_ARAB(true),
 
     /** Cyrillic that carries Russian-only letters {@code ы щ} — must NOT be stemmed as Uzbek. */
