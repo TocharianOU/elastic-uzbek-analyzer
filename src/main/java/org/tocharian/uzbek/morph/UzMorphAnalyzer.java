@@ -54,14 +54,25 @@ public final class UzMorphAnalyzer {
     private static final String ALLOMORPHS = "/uz_morph/stem-allomorphs.tsv";
 
     /** Shortest string allowed to remain after stripping against the lexicon. */
-    private static final int MIN_ROOT = 3;
+    private static final int MIN_ROOT = 2;
 
     /** Shortest remainder accepted by the out-of-vocabulary fallback, which has no
      *  lexicon to check its work and so is held to a stricter minimum. */
     private static final int MIN_OOV_ROOT = 4;
 
+    /** How many times analysis may re-enter itself on its own remainder. */
+    private static final int MAX_PASSES = 4;
+
     /**
-     * The only affixes the out-of-vocabulary fallback may remove.
+     * The core inflections: the affixes that are both highly productive and
+     * unambiguous.
+     *
+     * <p>Used for two things. They are the only affixes the out-of-vocabulary
+     * fallback may remove, and they win ties when several cuts all validate —
+     * which is what settles {@code otalar}. Both {@code ota+lar} and
+     * {@code otal+ar} leave a real root and agree on part of speech, but
+     * {@code -lar} is the plural every Uzbek noun takes and {@code -ar} is not,
+     * so the first is the reading a shopper meant.
      *
      * <p>Product titles are full of words no lexicon has: new brands, compounds,
      * derived forms such as {@code oʻqituvchi} that are built from derivational
@@ -69,16 +80,36 @@ public final class UzMorphAnalyzer {
      * unanalyzed costs real recall, but stripping them with the full 2,464-surface
      * table would be guessing.
      *
-     * <p>So the fallback is restricted to nominal inflections that are long enough
-     * and distinctive enough to be worth the bet, ordered longest first. Short or
-     * vowel-only affixes such as {@code -i} and {@code -si} are excluded: far too
-     * many Uzbek roots end that way.
+     * <p>Ordered longest first. Short or vowel-only affixes such as {@code -i} and
+     * {@code -si} are deliberately absent: far too many Uzbek roots end that way
+     * for the fallback to strip them blind, and as tie-breakers they would beat
+     * the longer cut that is usually right.
      */
-    private static final List<String> OOV_AFFIXES = List.of(
+    private static final List<String> CORE_AFFIXES = List.of(
         "larimizda", "laringizda", "larimizni", "laringizni", "larimizning",
         "lardagi", "larimiz", "laringiz", "larining", "larning", "larida",
         "laridan", "lariga", "larini", "larda", "lardan", "larga", "larni",
         "lari", "dagi", "ning", "lar", "dan", "ni", "da", "ga", "ka", "qa");
+
+    private static final Set<String> CORE_AFFIX_SET = Set.copyOf(CORE_AFFIXES);
+
+    /**
+     * Plural affixes, the one family safe to strip off a word the lexicon already
+     * lists as a root.
+     *
+     * <p>The source word list carries plenty of plain plurals as entries of their
+     * own — {@code beglar}, {@code betlar}, {@code bentonitlar} — and stopping at
+     * them splits a noun across two terms. Measured over the 57,807 roots, 813
+     * end in a core affix and decompose to another root; the {@code lar} family is
+     * almost entirely genuine plurals, while the case endings are almost entirely
+     * false: {@code sirka} is vinegar, not {@code sir}+{@code ka}, and the same
+     * goes for {@code tikka}, {@code anonimka} and {@code metodika}. So plurals
+     * are decomposed and case endings are not.
+     */
+    private static final Set<String> PLURAL_AFFIXES = Set.of(
+        "lar", "lari", "larni", "larning", "larda", "lardan", "larga", "lardagi",
+        "larimiz", "laringiz", "larining", "larida", "laridan", "lariga", "larini",
+        "larimizda", "laringizda", "larimizni", "laringizni", "larimizning");
 
     /** Root -> the parts of speech the lexicon gives it. Empty means unconstrained. */
     private final Map<String, Set<String>> roots;
@@ -129,13 +160,27 @@ public final class UzMorphAnalyzer {
      *                  while {@code telefonlar} still becomes {@code telefon}.
      */
     public Analysis analyze(String searchKey, ProtectionVerdict guard) {
+        return analyze(searchKey, guard, 0);
+    }
+
+    private Analysis analyze(String searchKey, ProtectionVerdict guard, int pass) {
         if (searchKey == null || searchKey.isEmpty()) return Analysis.identity(searchKey == null ? "" : searchKey);
 
         if (guard.level() == Protection.FULL) {
             return new Analysis(searchKey, searchKey, List.of(), Analysis.Method.PROTECTED);
         }
 
+        // Before accepting the word as a root, check whether it is an inflected
+        // shape the allomorph table knows about. The source word list carries such
+        // shapes as entries of their own — "shahri" and "singlim" sit in it
+        // alongside "shahar" and "singil" — so a plain root check stops there and
+        // never reaches the table that says which one is the lemma.
+        Analysis viaAllomorph = allomorphDecomposition(searchKey, floorFor(guard));
+        if (viaAllomorph != null) return viaAllomorph;
+
         if (roots.containsKey(searchKey)) {
+            Analysis plural = pluralOfKnownRoot(searchKey, floorFor(guard));
+            if (plural != null) return plural;
             return new Analysis(searchKey, searchKey, List.of(), Analysis.Method.ROOT);
         }
 
@@ -144,17 +189,18 @@ public final class UzMorphAnalyzer {
             floor = Math.max(floor, guard.matched().length());
         }
 
-        // Shortest affix first, i.e. longest surviving stem.
+        // Collect every cut that validates, then choose — rather than taking the
+        // first one found in either direction.
         //
-        // Longest-match-first is the usual rule for a bare stemmer, but it is the
-        // wrong one once the remainder has to be a real word: it throws away
-        // material a shorter cut would have kept. "xaritasi" has a long tail that
-        // happens to leave the valid root "xari", so longest-first answers "xari"
-        // when the word is "xarita" + "si". Taking the smallest cut that still
-        // validates keeps as much of the word as the lexicon will vouch for, and
-        // long affixes are still found — nothing shorter validates for
-        // "kitoblarimizda", so it walks up to "larimizda" and returns "kitob".
+        // Neither direction works alone, which is the whole reason for scoring.
+        // Longest affix first answers "xari" for "xaritasi", because a long tail
+        // happens to leave a valid root, when the word is "xarita"+"si". Shortest
+        // affix first answers "otal"+"ar" for "otalar", because "ar" is an affix
+        // and "otal" is a root, when the word is "ota"+"lar". So stem length is
+        // not the deciding property — productivity of the affix is.
         int longest = Math.min(maxAffixLength, searchKey.length() - floor);
+        Analysis best = null;
+        int bestScore = Integer.MIN_VALUE;
         for (int len = 1; len <= longest; len++) {
             String affix = searchKey.substring(searchKey.length() - len);
             Set<String> affixPos = affixes.get(affix);
@@ -162,29 +208,109 @@ public final class UzMorphAnalyzer {
 
             String stem = searchKey.substring(0, searchKey.length() - len);
             Resolved r = resolve(stem);
-            if (r != null && posAgrees(affixPos, roots.get(r.root))) {
-                return new Analysis(searchKey, r.root, List.of(affix), r.method);
+            if (r == null || !posAgrees(affixPos, roots.get(r.root))) continue;
+
+            // A core inflection outranks everything; among equals, keep more of
+            // the word. Small margins, so the two never trade places by accident.
+            int score = (CORE_AFFIX_SET.contains(affix) ? 1000 : 0) + r.root.length();
+            if (score > bestScore) {
+                bestScore = score;
+                best = new Analysis(searchKey, r.root, List.of(affix), r.method);
             }
         }
+        if (best != null) return best;
 
         // Nothing in the lexicon matched. Fall back to a short list of safe
         // nominal inflections so that unknown words still lose their case endings.
-        Analysis oov = oovStrip(searchKey, floor);
+        Analysis oov = oovStrip(searchKey, floor, pass);
         return oov != null ? oov : Analysis.identity(searchKey);
     }
 
+    private static int floorFor(ProtectionVerdict guard) {
+        int floor = MIN_ROOT;
+        if (guard.level() == Protection.STEM_LOCKED && guard.matched() != null) {
+            floor = Math.max(floor, guard.matched().length());
+        }
+        return floor;
+    }
+
     /**
-     * Strip one unambiguous nominal affix from a word the lexicon does not know.
+     * Is this lexicon entry simply the plural of another entry?
      *
-     * <p>Unvalidated by definition, so it is deliberately timid: one affix only,
-     * from {@link #OOV_AFFIXES}, and never below {@link #MIN_OOV_ROOT} characters.
+     * <p>Restricted to {@link #PLURAL_AFFIXES} on purpose. Allowing case endings
+     * here would break real words that merely end that way.
      */
-    private Analysis oovStrip(String searchKey, int floor) {
-        int minRoot = Math.max(MIN_OOV_ROOT, floor);
-        for (String affix : OOV_AFFIXES) {
-            if (searchKey.length() - affix.length() < minRoot) continue;
+    private Analysis pluralOfKnownRoot(String searchKey, int floor) {
+        for (String affix : PLURAL_AFFIXES) {
+            if (searchKey.length() - affix.length() < Math.max(2, floor)) continue;
             if (!searchKey.endsWith(affix)) continue;
             String stem = searchKey.substring(0, searchKey.length() - affix.length());
+            Set<String> stemPos = roots.get(stem);
+            if (stemPos == null) continue;
+            if (!posAgrees(affixes.get(affix), stemPos)) continue;
+            return new Analysis(searchKey, stem, List.of(affix), Analysis.Method.AFFIX_STRIP);
+        }
+        return null;
+    }
+
+    /**
+     * Is this word an allomorph stem plus a valid affix?
+     *
+     * <p>Only the 89 hand-curated allomorph stems are eligible, and the part of
+     * speech still has to agree, so this cannot run away with ordinary words. It
+     * exists because the source lexicon lists inflected shapes as lemmas, which
+     * makes the plain root check fire too early on exactly the words the allomorph
+     * table was written for.
+     */
+    private Analysis allomorphDecomposition(String searchKey, int floor) {
+        int longest = Math.min(maxAffixLength, searchKey.length() - floor);
+        for (int len = 1; len <= longest; len++) {
+            String affix = searchKey.substring(searchKey.length() - len);
+            Set<String> affixPos = affixes.get(affix);
+            if (affixPos == null) continue;
+
+            String stem = searchKey.substring(0, searchKey.length() - len);
+            if (roots.containsKey(stem)) continue;      // a real word; leave it alone
+            List<String> alts = allomorphs.get(stem);
+            if (alts == null) continue;
+            for (String alt : alts) {
+                if (roots.containsKey(alt) && posAgrees(affixPos, roots.get(alt))) {
+                    return new Analysis(searchKey, alt, List.of(affix), Analysis.Method.ALLOMORPH);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Strip one unambiguous nominal affix from a word the lexicon does not know,
+     * then hand the remainder back to the validated path.
+     *
+     * <p>The affix table enumerates chains rather than slots, and it cannot
+     * enumerate all of them: {@code -larimizdagi} is listed but
+     * {@code -larimizdagilar} is not. Without the second look, the fallback
+     * answers with the unvalidated remainder {@code kitoblarimizdagi}, which is
+     * not a word at all. Re-entering turns that into {@code kitob}.
+     *
+     * <p>Unvalidated by definition, so the cut itself stays timid: one affix per
+     * pass, from {@link #CORE_AFFIXES}, never below {@link #MIN_OOV_ROOT}
+     * characters, and at most {@link #MAX_PASSES} passes in total.
+     */
+    private Analysis oovStrip(String searchKey, int floor, int pass) {
+        int minRoot = Math.max(MIN_OOV_ROOT, floor);
+        for (String affix : CORE_AFFIXES) {
+            if (searchKey.length() - affix.length() < minRoot) continue;
+            if (!searchKey.endsWith(affix)) continue;
+
+            String stem = searchKey.substring(0, searchKey.length() - affix.length());
+            if (pass + 1 < MAX_PASSES) {
+                Analysis deeper = analyze(stem, ProtectionVerdict.OPEN, pass + 1);
+                if (deeper.isAnalyzed()) {
+                    List<String> chain = new ArrayList<>(deeper.affixes());
+                    chain.add(affix);
+                    return new Analysis(searchKey, deeper.lemma(), chain, deeper.method());
+                }
+            }
             return new Analysis(searchKey, stem, List.of(affix), Analysis.Method.OOV_STRIP);
         }
         return null;
@@ -197,22 +323,24 @@ public final class UzMorphAnalyzer {
     /**
      * Turn what is left after stripping into a real root, or return null.
      *
-     * <p>The allomorph table is consulted BEFORE a direct lexicon hit. The source
-     * word list contains inflectional stems as entries of their own — {@code ayr}
-     * sits beside {@code ayir} — so a direct match would stop at the inflected
-     * shape and send {@code ayrildi} and {@code ayirdi} to two different terms.
-     * The table exists precisely to say which shape is the lemma.
+     * <p>A direct lexicon hit wins over the allomorph table. The table lists the
+     * bound shapes of stems that lose a vowel under inflection, but some of those
+     * shapes are ordinary words in their own right: {@code qiz} is the bound form
+     * of {@code qizil} "red" AND the everyday word for "girl". Consulting the
+     * table first turns {@code qizlar} "girls" into {@code qizil}, which is not
+     * merely a worse lemma but a different word. The table only gets a say when
+     * the remainder is not a word on its own.
      */
     private Resolved resolve(String stem) {
+        if (roots.containsKey(stem)) {
+            return new Resolved(stem, Analysis.Method.AFFIX_STRIP);
+        }
+
         List<String> alts = allomorphs.get(stem);
         if (alts != null) {
             for (String alt : alts) {
                 if (roots.containsKey(alt)) return new Resolved(alt, Analysis.Method.ALLOMORPH);
             }
-        }
-
-        if (roots.containsKey(stem)) {
-            return new Resolved(stem, Analysis.Method.AFFIX_STRIP);
         }
 
         // tilak + im -> tilagim ; oʻrtoq + im -> oʻrtogʻim. Both surface as a

@@ -145,6 +145,42 @@ The affix source writes optional buffer segments as `(i) (a) (t) (s) (n)` and
 uses four archiphonemes — `T`=d/t, `G`=g/k/q, `Y`=a/y, `Q`=q/g/k. Generation
 expands all of them into concrete surfaces.
 
+### How a cut is chosen
+
+All cuts that validate are collected, then scored. Neither search direction works
+alone, which is the whole reason for scoring:
+
+- **longest affix first** answers `xari` for `xaritasi`, because a long tail
+  happens to leave a valid root, when the word is `xarita`+`si`;
+- **shortest affix first** answers `otal`+`ar` for `otalar`, because `-ar` is an
+  affix and `otal` is a root, when the word is `ota`+`lar`.
+
+Stem length is therefore not the deciding property. Productivity of the affix is:
+a core inflection outranks an incidental one, and among equals the longer stem
+wins.
+
+Analysis also re-enters itself on its own remainder, up to four passes. The affix
+table enumerates chains and cannot enumerate all of them — `-larimizdagi` is
+listed, `-larimizdagilar` is not — so one pass would answer
+`kitoblarimizdagilar` with the unvalidated remainder `kitoblarimizdagi`, which is
+not a word at all.
+
+### Decomposing entries that are already in the lexicon
+
+The source word list carries inflected shapes as entries of their own, so the
+plain root check fires too early on exactly the words that most need analysis.
+Measured over the 57,807 roots, 813 (1.41%) end in a core affix and decompose to
+another root — and the two halves of that number behave completely differently:
+
+| Family | Example | Verdict |
+|---|---|---|
+| `lar` plurals | `beglar`→`beg`, `betlar`→`bet`, `antibiotiklar`→`antibiotik` | almost all genuine; decompose |
+| case endings | `sirka` (vinegar) is not `sir`+`ka`; likewise `tikka`, `anonimka`, `metodika` | almost all false; leave alone |
+
+So plurals are stripped off known roots and case endings are not. Total
+over-decomposition of the root lexicon after this: 185 of 57,807 (0.32%), of
+which 161 are the intended plural unifications.
+
 ### Three decisions worth recording
 
 **Shortest affix first, not longest.** Longest-match is the usual rule for a bare
@@ -160,10 +196,13 @@ it walks up to `-larimizda` and returns `kitob`.
 that disagrees with its stem. An unknown POS on either side is never treated as
 a disagreement.
 
-**The allomorph table is consulted before a direct lexicon hit.** The source word
-list contains inflectional stems as entries of their own — `ayr` sits beside
-`ayir` — so a direct match would stop at the inflected shape and send `ayrildi`
-and `ayirdi` to two different terms.
+**A direct lexicon hit beats the allomorph table.** The table lists the bound
+shapes of stems that lose a vowel under inflection, but some of those shapes are
+ordinary words in their own right: `qiz` is the bound form of `qizil` "red" and
+also the everyday word for "girl". Consulting the table first turns `qizlar`
+"girls" into `qizil` — not a worse lemma but a different word. The table only
+gets a say when the remainder is not a word on its own, which is where it earns
+its keep: `tilag` is not a word, so `tilagim` reaches `tilak`.
 
 ### Extracting part of speech
 
@@ -193,9 +232,14 @@ column 1 by filename is wrong: `Verbs.csv` lists `abad` as the stem behind
   derived forms happen to be listed as lemmas in their own right, which covers a
   good part of it; the rest falls to the timid OOV fallback.
 - **Genuine morphological ambiguity is resolved by rule, not by context.** A
-  suffix stripper has no sentence to look at. Where two analyses both validate
-  and both agree on part of speech, the longest surviving stem wins. That is
+  suffix stripper has no sentence to look at. Where several analyses validate and
+  agree on part of speech, a core inflection wins, then the longer stem. That is
   defensible and consistent, not always linguistically right.
+- **Inflected forms in the source lexicon still cost some unification.** Only the
+  plural family is decomposed off known roots, so `shahar` and `shahri` remain
+  separate terms — both are listed as lemmas, and stripping `-i` from every known
+  root would break far more words than it would join. A curated lemma list would
+  fix this properly; the affix rules cannot.
 - **Brand exemptions and the root lexicon must be regenerated together.** A brand
   is exempted from protection on the promise that Layer 4 knows it as a root. If
   the two drift apart, an exempted brand falls through to affix stripping.

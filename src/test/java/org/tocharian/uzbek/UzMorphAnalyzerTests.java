@@ -79,6 +79,62 @@ public class UzMorphAnalyzerTests {
                 || a.method() == Analysis.Method.AFFIX_STRIP);
     }
 
+    /**
+     * The affix table enumerates chains, and it cannot enumerate all of them:
+     * -larimizdagi is listed, -larimizdagilar is not. One pass answers with an
+     * unvalidated remainder that is not a word at all.
+     */
+    @Test
+    public void reEntersOnItsOwnRemainderForChainsTheTableMisses() {
+        assertEquals("kitob", lemma("kitoblarimizdagilar"));
+        assertEquals("uy", lemma("uydagilarga"));
+        assertEquals("telefon", lemma("telefonlarimizdan"));
+    }
+
+    /**
+     * Both cuts leave a real root and agree on part of speech, so stem length
+     * cannot decide: "xaritasi" wants the longer stem and "otalar" the longer
+     * affix. Productivity of the affix is what settles it.
+     */
+    @Test
+    public void prefersACoreInflectionOverAnIncidentalOne() {
+        assertEquals("ota", lemma("otalar"));       // ota+lar, not otal+ar
+        assertEquals("xarita", lemma("xaritasi"));  // xarita+si, not xari+tasi
+    }
+
+    /**
+     * "qiz" is the bound form of "qizil" (red) and also the everyday word for
+     * girl. Consulting the allomorph table before the lexicon turns "qizlar"
+     * (girls) into "qizil", which is not a worse lemma but a different word.
+     */
+    @Test
+    public void aRealWordOutranksItsAllomorphReading() {
+        assertEquals("qiz", lemma("qizlar"));
+    }
+
+    /**
+     * The source lists plenty of plain plurals as lemmas of their own, which
+     * would otherwise split a noun across two terms.
+     */
+    @Test
+    public void decomposesPluralsThatTheLexiconListsAsRoots() {
+        assertEquals("beg", lemma("beglar"));
+        assertEquals("bet", lemma("betlar"));
+        assertEquals("antibiotik", lemma("antibiotiklar"));
+    }
+
+    /**
+     * ...but only plurals. Case endings on known roots are almost always part of
+     * the word: sirka is vinegar, not sir+ka.
+     */
+    @Test
+    public void doesNotStripCaseEndingsOffWordsThatMerelyEndThatWay() {
+        for (String w : new String[]{"sirka", "tilka", "tikka", "anonimka",
+                                     "metodika", "qadimdan", "avjida", "sirga"}) {
+            assertEquals(w, w, lemma(w));
+        }
+    }
+
     @Test
     public void bothScriptsReachTheSameLemma() {
         assertEquals(lemma("telefonlar"),
