@@ -26,7 +26,15 @@ import java.util.Set;
  * <p>Uzbek is agglutinative, so {@code kitoblarimizda} and {@code kitob} are the
  * same product to a shopper. Recall depends on them reaching the same term.
  *
- * <p>This is a validated suffix stripper, not a finite-state morphotactic parser,
+ * <p>Analysis is table-first. A 118k-entry inflection table, compiled by a
+ * linguist, is consulted before any rule runs; the rules exist to handle what is
+ * missing from it rather than to re-derive what it already states. Verb lemmas in
+ * that table are normalised to the bare stem rather than the {@code -moq}
+ * infinitive, so a word reaching a lemma by lookup and a word reaching one by
+ * rule end up at the same term.
+ *
+ * <p>The rules themselves are a validated suffix stripper, not a finite-state
+ * morphotactic parser,
  * and the choice is driven by the data: the affix inventory it is built from
  * enumerates whole affix <i>chains</i> rather than slots — {@code -larimizdangina}
  * is one entry — so there is no morphotactic grammar to reconstruct. Stripping the
@@ -49,6 +57,7 @@ import java.util.Set;
  */
 public final class UzMorphAnalyzer {
 
+    private static final String FORMS      = "/uz_morph/forms.tsv";
     private static final String ROOTS      = "/uz_morph/roots.tsv";
     private static final String AFFIXES    = "/uz_morph/affixes.tsv";
     private static final String ALLOMORPHS = "/uz_morph/stem-allomorphs.tsv";
@@ -116,6 +125,8 @@ public final class UzMorphAnalyzer {
     /** Affix surface -> the parts of speech it attaches to. Empty means unconstrained. */
     private final Map<String, Set<String>> affixes;
     private final Map<String, List<String>> allomorphs;
+    /** Attested inflected form -> its lemma. Consulted before any rule runs. */
+    private final Map<String, String> forms;
     private final int maxAffixLength;
 
     private static final class Holder {
@@ -130,6 +141,7 @@ public final class UzMorphAnalyzer {
         this.roots = new HashMap<>();
         this.affixes = new HashMap<>();
         this.allomorphs = new HashMap<>();
+        this.forms = new HashMap<>();
         int max = 0;
 
         for (String[] row : load(ROOTS)) roots.put(row[0], tags(row));
@@ -141,7 +153,23 @@ public final class UzMorphAnalyzer {
             if (row.length < 2) continue;
             allomorphs.put(row[0], List.of(row[1].split(",")));
         }
+        // Lemma strings are pooled: 118k forms share 31k lemmas, so holding one
+        // instance of each rather than one per row is most of the footprint.
+        Map<String, String> pool = new HashMap<>();
+        for (String[] row : load(FORMS)) {
+            if (row.length < 2) continue;
+            forms.put(row[0], pool.computeIfAbsent(row[1], v -> v));
+        }
+
         this.maxAffixLength = max;
+    }
+
+    /**
+     * Analyze with the attested-form table bypassed, so the rules can be measured
+     * against it as a held-out set. Not used at index or query time.
+     */
+    public Analysis analyzeWithRulesOnly(String searchKey) {
+        return analyze(searchKey, ProtectionVerdict.OPEN, 0, false);
     }
 
     /** Analyze without protection information. */
@@ -164,6 +192,10 @@ public final class UzMorphAnalyzer {
     }
 
     private Analysis analyze(String searchKey, ProtectionVerdict guard, int pass) {
+        return analyze(searchKey, guard, pass, true);
+    }
+
+    private Analysis analyze(String searchKey, ProtectionVerdict guard, int pass, boolean useTable) {
         if (searchKey == null || searchKey.isEmpty()) return Analysis.identity(searchKey == null ? "" : searchKey);
 
         if (guard.level() == Protection.FULL) {
@@ -177,6 +209,13 @@ public final class UzMorphAnalyzer {
         // never reaches the table that says which one is the lemma.
         Analysis viaAllomorph = allomorphDecomposition(searchKey, floorFor(guard));
         if (viaAllomorph != null) return viaAllomorph;
+
+        // An attested form needs no analysis. The rules exist for what is missing
+        // from this table, not to re-derive what a linguist already wrote down.
+        String attested = useTable ? forms.get(searchKey) : null;
+        if (attested != null) {
+            return new Analysis(searchKey, attested, List.of(), Analysis.Method.LOOKUP);
+        }
 
         if (roots.containsKey(searchKey)) {
             Analysis plural = pluralOfKnownRoot(searchKey, floorFor(guard));
@@ -222,7 +261,7 @@ public final class UzMorphAnalyzer {
 
         // Nothing in the lexicon matched. Fall back to a short list of safe
         // nominal inflections so that unknown words still lose their case endings.
-        Analysis oov = oovStrip(searchKey, floor, pass);
+        Analysis oov = oovStrip(searchKey, floor, pass, useTable);
         return oov != null ? oov : Analysis.identity(searchKey);
     }
 
@@ -296,7 +335,7 @@ public final class UzMorphAnalyzer {
      * pass, from {@link #CORE_AFFIXES}, never below {@link #MIN_OOV_ROOT}
      * characters, and at most {@link #MAX_PASSES} passes in total.
      */
-    private Analysis oovStrip(String searchKey, int floor, int pass) {
+    private Analysis oovStrip(String searchKey, int floor, int pass, boolean useTable) {
         int minRoot = Math.max(MIN_OOV_ROOT, floor);
         for (String affix : CORE_AFFIXES) {
             if (searchKey.length() - affix.length() < minRoot) continue;
@@ -304,7 +343,7 @@ public final class UzMorphAnalyzer {
 
             String stem = searchKey.substring(0, searchKey.length() - affix.length());
             if (pass + 1 < MAX_PASSES) {
-                Analysis deeper = analyze(stem, ProtectionVerdict.OPEN, pass + 1);
+                Analysis deeper = analyze(stem, ProtectionVerdict.OPEN, pass + 1, useTable);
                 if (deeper.isAnalyzed()) {
                     List<String> chain = new ArrayList<>(deeper.affixes());
                     chain.add(affix);
@@ -399,6 +438,7 @@ public final class UzMorphAnalyzer {
         return out;
     }
 
+    public int formCount()      { return forms.size(); }
     public int rootCount()      { return roots.size(); }
     public int affixCount()     { return affixes.size(); }
     public int allomorphCount() { return allomorphs.size(); }

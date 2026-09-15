@@ -16,6 +16,8 @@ import java.util.List;
 public record Analysis(String surface, String lemma, List<String> affixes, Method method) {
 
     public enum Method {
+        /** The form was listed in the attested inflection table; no rule was needed. */
+        LOOKUP,
         /** The token is itself a root. */
         ROOT,
         /** An affix was stripped and the remainder is a known root. */

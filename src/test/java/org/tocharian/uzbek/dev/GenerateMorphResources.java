@@ -44,14 +44,124 @@ public final class GenerateMorphResources {
         Path outDir = Path.of("src/main/resources/uz_morph");
         Files.createDirectories(outDir);
 
-        writeRoots(stems, deps, outDir.resolve("roots.tsv"));
+        // The gold table is read first: it contributes lemmas to the root lexicon.
+        Gold gold = readGold(deps);
+
+        writeRoots(stems, deps, gold, outDir.resolve("roots.tsv"));
+        writeForms(gold, outDir.resolve("forms.tsv"));
         writeAffixes(deps, outDir.resolve("affixes.tsv"));
         writeAllomorphs(deps, outDir.resolve("stem-allomorphs.tsv"));
     }
 
+    // -------------------------------------------------------- gold table
+
+    /** A UniMorph-style inflection table: surface form -> lemma, plus the lemmas themselves. */
+    private record Gold(Map<String, String> forms, Map<String, TreeSet<String>> lemmaPos) {}
+
+    private static final Map<String, String> UNIMORPH_POS = Map.of(
+        "N", "NOUN", "V", "VERB", "ADJ", "ADJ", "ADV", "ADV",
+        "PRON", "PRON", "NUM", "NUM", "CNJ", "CNJ", "INTJ", "INTJ", "IMIT", "IMIT");
+
+    /**
+     * Read the 145,844-row UniMorph table shipped with uzbek_morph.
+     *
+     * <p>Two conventions have to be reconciled. Their verb lemmas are the {@code -moq}
+     * infinitive, ours is the bare stem, and a lookup that disagreed with the rules
+     * would send {@code berdi} and {@code beribdi} to different terms depending on
+     * which path happened to fire. So {@code -moq} is stripped — but only when what
+     * remains is a verb stem the table itself attests, because {@code barmoq}
+     * "finger" and {@code beshbarmoq} are nouns that merely end that way.
+     */
+    private static Gold readGold(Path deps) throws Exception {
+        Path f = deps.resolve("uzbek-morph-rulebased/uzbek_morph/dataset/uzbek_unified.txt");
+        if (!Files.exists(f)) {
+            System.out.println("  (no uzbek_unified.txt; skipping the gold table)");
+            return new Gold(Map.of(), Map.of());
+        }
+        List<String> lines = Files.readAllLines(f, StandardCharsets.UTF_8);
+
+        // Pass 1: every attested verb stem, so -moq can be stripped safely.
+        Set<String> verbStems = new HashSet<>();
+        for (String line : lines) {
+            String[] p = line.split("\t");
+            if (p.length < 3 || !p[2].startsWith("V")) continue;
+            String lemma = p[0].trim();
+            if (lemma.endsWith("moq")) {
+                verbStems.add(UzNormalizer.normalize(lemma.substring(0, lemma.length() - 3)).searchKey());
+            }
+        }
+
+        Map<String, String> forms = new HashMap<>();
+        Map<String, TreeSet<String>> lemmaPos = new HashMap<>();
+        int ambiguous = 0;
+
+        for (String line : lines) {
+            String[] p = line.split("\t");
+            if (p.length < 3) continue;
+            String lemmaKey = citation(UzNormalizer.normalize(p[0].trim()).searchKey(), verbStems);
+            String surfaceKey = UzNormalizer.normalize(p[1].trim()).searchKey();
+            if (lemmaKey.isEmpty() || surfaceKey.isEmpty()) continue;
+            // 68% of the source is multi-word: compound and auxiliary-verb
+            // constructions such as "afzal korar edi". A token-level analyzer
+            // never sees those as one string, so carrying them would only pad
+            // the plugin with entries nothing can look up.
+            if (surfaceKey.indexOf(' ') >= 0 || lemmaKey.indexOf(' ') >= 0) continue;
+
+            String pos = UNIMORPH_POS.getOrDefault(p[2].split(";")[0].trim(), "X");
+            lemmaPos.computeIfAbsent(lemmaKey, k -> new TreeSet<>()).add(pos);
+
+            if (surfaceKey.equals(lemmaKey)) continue;   // roots.tsv covers these
+
+            String existing = forms.get(surfaceKey);
+            if (existing == null) {
+                forms.put(surfaceKey, lemmaKey);
+            } else if (!existing.equals(lemmaKey)) {
+                ambiguous++;
+                // 0.2% of surfaces admit two readings, nearly all of them related
+                // verb stems (ajratganlar is ajramoq or ajratmoq). Keep the lemma
+                // that shares more of the surface, which is the one whose stem the
+                // surface was actually built on.
+                if (commonPrefix(surfaceKey, lemmaKey) > commonPrefix(surfaceKey, existing)) {
+                    forms.put(surfaceKey, lemmaKey);
+                }
+            }
+        }
+        System.out.printf("gold table         %d single-token forms, %d lemmas (%d ambiguous)%n",
+                forms.size(), lemmaPos.size(), ambiguous);
+        return new Gold(forms, lemmaPos);
+    }
+
+    /** Their verb citation form is the -moq infinitive; ours is the bare stem. */
+    private static String citation(String lemmaKey, Set<String> verbStems) {
+        if (lemmaKey.endsWith("moq")) {
+            String stem = lemmaKey.substring(0, lemmaKey.length() - 3);
+            if (verbStems.contains(stem)) return stem;
+        }
+        return lemmaKey;
+    }
+
+    private static int commonPrefix(String a, String b) {
+        int n = Math.min(a.length(), b.length()), i = 0;
+        while (i < n && a.charAt(i) == b.charAt(i)) i++;
+        return i;
+    }
+
+    private static void writeForms(Gold gold, Path out) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Attested inflected forms and the lemma each belongs to.\n");
+        sb.append("# Consulted before any rule runs: a form that is listed here needs no\n");
+        sb.append("# analysis, and the rules only handle what is missing. Verb lemmas are\n");
+        sb.append("# the bare stem, not the -moq infinitive, so lookup and rules agree.\n");
+        sb.append("# GENERATED from uzbek_morph uzbek_unified.txt (Salaev, MIT). Do not hand-edit.\n");
+        sb.append("# surface<TAB>lemma\n");
+        new TreeMap<>(gold.forms()).forEach((k, v) -> sb.append(k).append('\t').append(v).append('\n'));
+        Files.writeString(out, sb.toString(), StandardCharsets.UTF_8);
+        System.out.println("forms.tsv          " + gold.forms().size() + " forms");
+    }
+
     // ------------------------------------------------------------- roots
 
-    private static void writeRoots(Path stems, Path deps, Path out) throws Exception {
+    private static void writeRoots(Path stems, Path deps, Gold gold, Path out) throws Exception {
         // A root can carry several parts of speech — Uzbek noun/verb homonyms are
         // common — so this is a set per root, not a single tag.
         Map<String, TreeSet<String>> pos = new HashMap<>();
@@ -101,7 +211,14 @@ public final class GenerateMorphResources {
         } else {
             System.out.println("  (no CSV_files.zip; every root tagged X)");
         }
+        // Lemmas the gold table knows and the stem list does not.
+        int added = 0;
+        for (Map.Entry<String, TreeSet<String>> e : gold.lemmaPos().entrySet()) {
+            if (!pos.containsKey(e.getKey())) added++;
+            pos.computeIfAbsent(e.getKey(), k -> new TreeSet<>()).addAll(e.getValue());
+        }
         pos.remove("");
+        System.out.println("  + " + added + " lemmas from the gold table");
 
         StringBuilder sb = new StringBuilder();
         sb.append("# Uzbek root lexicon, keyed on the Layer 1 search key.\n");

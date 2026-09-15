@@ -24,6 +24,10 @@ UzbekLemmaStems-POS-Dataset by Maksud Sharipov et al., used under the
 Apache License 2.0.
 https://github.com/MaksudSharipov/UzbekLemmaStems-POS-Dataset
 
+src/main/resources/uz_morph/forms.tsv is generated from the UniMorph-style
+inflection table of uzbek_morph by Ulugbek Salaev, used under the MIT License.
+https://github.com/UlugbekSalaev/uzbek_morph
+
 src/main/resources/uz_morph/affixes.tsv is generated from the affix inventory
 of UzMorphAnalyser by Ulugbek Salaev, used under the MIT License.
 https://github.com/UlugbekSalaev/UzMorphAnalyser

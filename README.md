@@ -106,7 +106,7 @@ L0  identify   which orthography; Uzbek Cyrillic or Russian
 L1  normalize  fold to one internal form, keep an offset map
 L2  tokenize   apostrophes are letters; model codes stay whole
 L3  protect    mark what morphology must not touch
-L4  morphology strip a validated affix; restore the root
+L4  morphology look the form up; else strip a validated affix and restore the root
 L5  recipe     the three-field mapping above
 ```
 
@@ -120,6 +120,8 @@ before the one above it exists.
 | | |
 |---|---|
 | Normalization | ~500k tokens/sec, single-threaded |
+| Morphology, rules alone | 63.2% against the attested-form table as held-out data |
+| Analyzer tables in heap | ~15.6 MB, loaded once and shared |
 | Cross-script fold | every spelling of a word collapses to one key |
 | Fold collision cost | 0.97%, versus 1.50% for blanket diacritic stripping |
 | Layer 3 false protection | ~0 after lexicon-based brand exemption |
