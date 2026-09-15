@@ -1,0 +1,180 @@
+# Brand and product names that must never be morphologically analyzed.
+#
+# SEED LIST — assembled from general knowledge of the Uzbek market
+# (Uzum Market, Asaxiy, Texnomart, Mediapark, OLX, UzAuto). NOT derived from a
+# real catalogue. Replace or extend from live listing data before production;
+# coverage here is illustrative, not complete.
+#
+# Matching happens on the Layer 1 search key, so an entry written in either
+# alphabet is enough for that spelling. Cyrillic spellings are listed separately
+# where the transliteration differs from the Latin one (Xiaomi / Сяоми do NOT
+# fold to the same key).
+#
+# One entry per line. Blank lines and # comments ignored.
+
+# -- phones ---------------------------------------------------------------
+Samsung
+Galaxy
+Apple
+iPhone
+iPad
+AirPods
+Xiaomi
+Redmi
+Poco
+Huawei
+Honor
+Realme
+Oppo
+Vivo
+OnePlus
+Nokia
+Motorola
+Tecno
+Infinix
+ZTE
+Pixel
+Meizu
+
+# -- computing ------------------------------------------------------------
+Lenovo
+IdeaPad
+ThinkPad
+MacBook
+Asus
+Acer
+Dell
+MSI
+Microsoft
+Windows
+Intel
+Celeron
+Pentium
+Ryzen
+Nvidia
+GeForce
+Radeon
+
+# -- home appliances ------------------------------------------------------
+Bosch
+Siemens
+Beko
+Indesit
+Ariston
+Electrolux
+Whirlpool
+Midea
+Haier
+Gorenje
+Hisense
+Candy
+Vestel
+Toshiba
+Sharp
+Panasonic
+Philips
+Braun
+Tefal
+Moulinex
+Redmond
+Polaris
+
+# -- Uzbek / locally assembled brands ------------------------------------
+Artel
+Shivaki
+Roison
+Avalon
+Premier
+Uzum
+Asaxiy
+Texnomart
+Mediapark
+Olcha
+Zoodmall
+
+# -- audio / photo / accessories -----------------------------------------
+Sony
+PlayStation
+Canon
+Nikon
+Fujifilm
+GoPro
+Bose
+Marshall
+Anker
+Baseus
+Hoco
+Borofone
+Remax
+Ugreen
+
+# -- automotive (UzAuto / Chevrolet line) ---------------------------------
+Chevrolet
+Ravon
+Damas
+Labo
+Nexia
+Cobalt
+Gentra
+Lacetti
+Malibu
+Captiva
+Tracker
+Onix
+Tahoe
+Equinox
+Traverse
+Byd
+Chery
+Kia
+Hyundai
+Toyota
+
+# -- fashion / sport ------------------------------------------------------
+Nike
+Adidas
+Puma
+Reebok
+Zara
+Levis
+Uniqlo
+Converse
+
+# -- Cyrillic spellings whose key differs from the Latin one --------------
+Самсунг
+Сяоми
+Ксиаоми
+Хуавей
+Хонор
+Эпл
+Айфон
+Айпад
+Леново
+Асус
+Делл
+Бош
+Сименс
+Беко
+Индезит
+Аристон
+Электролюкс
+Мидея
+Хайер
+Артель
+Шиваки
+Сони
+Филипс
+Канон
+Никон
+Шевроле
+Равон
+Дамас
+Нексия
+Кобальт
+Джентра
+Ласетти
+Малибу
+Каптива
+Найк
+Адидас
+Пума

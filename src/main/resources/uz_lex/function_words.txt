@@ -1,0 +1,127 @@
+# Uzbek words that never take inflectional affixes.
+# Derived from UzMorphAnalyser non_affixed_stems.csv (Salaev), MIT.
+# One entry per line: word<TAB>pos
+agar	CNJ
+agarda	CNJ
+alohida	
+ammo	CNJ
+ana	PRON
+aslo	PRT
+asosan	MOD
+asta	ADV
+atigi	PRT
+axir	PRT
+bag‘oyat	PRT
+balki	MOD
+basharti	CNJ
+ba’zan	CNJ
+ba’zi	
+beri	ADP
+bilan	ADP
+binoan	ADP
+biroq	CNJ
+borada	
+borasida	
+boshqa	ADJ
+bo‘lak	ADP
+bo‘yicha	ADP
+burun	ADP
+buyon	ADP
+chog‘li	ADP
+chunki	CNJ
+dam	CNJ
+dastlab	
+dastlabki	
+deyarli	ADP
+doir	ADP
+endi	
+esa	
+faqat	PRT
+gar	CNJ
+garchand	CNJ
+garchi	CNJ
+goh	CNJ
+gohida	CNJ
+go‘yo	PRT
+go‘yoki	PRT
+g‘irt	PRT
+g‘oyat	PRT
+hali	
+haligacha	
+ham	PRT
+hamda	CNJ
+haqda	ADP
+haqida	ADP
+hatto	PRT
+hattoki	PRT
+hech	PRT
+holda	PRT
+ilgari	ADP
+juda	PRT
+kabi	ADP
+kabi	ADP
+ko‘plab	
+ko‘ra	ADP
+kungi	
+lek	CNJ
+lekin	CNJ
+lekin	CNJ
+mabodo	CNJ
+mana	PRON
+minan	ADP
+nafaqat	PRT
+nahot	PRT
+nahotki	PRT
+naq	PRT
+negaki	CNJ
+nihoyat	PRT
+nihoyatda	PRT
+oid	ADP
+orqali	ADP
+o‘laroq	
+o‘shanda	PRON
+o‘zga	ADJ
+pastki	
+qadar	ADP
+qarshi	ADP
+qo‘shimcha	
+sababki	CNJ
+sababli	ADP
+sababli	ADP
+sari	ADP
+sayin	ADP
+sekin	ADV
+shuningdek	MOD
+singari	ADP
+sira	PRT
+targ‘ib	
+tayanib	
+to	ADP
+toki	CNJ
+tomon	ADP
+tufayli	ADP
+tufayli	ADP
+tufayli	PRT
+uchun	ADP
+uchun	ADP
+umuman	
+ushbu	PRON
+uzra	ADP
+va	CNJ
+vale	CNJ
+xoh	CNJ
+xolos	PRT
+xuddi	PRT
+xususan	
+yana	ADV
+yanglig‘	ADP
+yarasha	ADP
+ya’ni	
+ya’ni	CNJ
+yo	CNJ
+yohud	CNJ
+yoinki	CNJ
+yoki	CNJ
+zero	CNJ
+zeroki	CNJ
+zinhor	PRT

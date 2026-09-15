@@ -1,0 +1,36 @@
+# Brand entries that are ALSO real Uzbek dictionary stems.
+#
+# These are deliberately NOT given FULL protection. A brand present in the
+# lexicon needs none: Layer 4 finds it as a known root and leaves it whole.
+# Protecting it instead costs real recall, because the same string is often a
+# common Uzbek word — 'uzum' is the marketplace AND the word for grape, 'bosh'
+# (Бош = Bosch) is the word for head, 'olcha' is cherry, 'ravon' is fluent.
+# Blocking morphology on those removes every inflected form from search.
+#
+# Protection is for brands the lexicon does NOT know, whose affix-stripping
+# fallback in Layer 4 would mangle them.
+#
+# GENERATED from brands.txt x a 46k-stem Uzbek lexicon. Regenerate after
+# editing brands.txt; do not hand-edit. Format: key<TAB>spellings
+
+anker	Anker
+apple	Apple
+ariston	Ariston, Аристон
+artel	Artel, Артель
+boş	Бош
+iphone	iPhone
+kanon	Канон
+kobalt	Кобальт
+marşall	Marshall
+microsoft	Microsoft
+nokia	Nokia
+olca	Olcha
+premier	Premier
+puma	Puma, Пума
+ravon	Ravon, Равон
+samsung	Samsung, Самсунг
+sony	Sony
+uzum	Uzum
+windows	Windows
+xiaomi	Xiaomi
+zara	Zara

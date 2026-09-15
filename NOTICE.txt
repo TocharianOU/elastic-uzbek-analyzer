@@ -1,0 +1,22 @@
+Elasticsearch Uzbek Analyzer Plugin
+Copyright 2026 TocharianOU
+
+This product includes software developed at TocharianOU.
+
+Linguistic resources
+--------------------
+src/main/resources/uz_lex/function_words.txt is derived from the
+non-affixed stem list of UzMorphAnalyser by Ulugbek Salaev, used under the
+MIT License. https://github.com/UlugbekSalaev/UzMorphAnalyser
+
+src/main/resources/uz_lex/brand-exemptions.txt is generated against the
+UzbekLemmaStems-POS-Dataset by Maksud Sharipov et al., used under the
+Apache License 2.0.
+https://github.com/MaksudSharipov/UzbekLemmaStems-POS-Dataset
+
+Orthographic conventions for the 2026 Latin alphabet, and the U+015F versus
+U+0219 distinction, follow the analysis published in the alifbo project
+(MIT License). No code from that project is used here.
+https://github.com/azakapro/alifbo
+
+brands.txt and loanwords.txt are seed lists compiled for this project.

@@ -1,0 +1,60 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+    }
+    dependencies {
+        classpath "org.elasticsearch.gradle:build-tools:${elasticsearchVersion}"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'elasticsearch.stable-esplugin'
+apply plugin: 'elasticsearch.yaml-rest-test'
+
+def esMajor = (findProperty('esMajor') ?: elasticsearchVersion.toString().tokenize('.')[0]).toString()
+def pluginReleaseVersion = (findProperty('pluginReleaseVersion') ?: '0.1.0').toString()
+def pluginArtifactVersion = "${pluginReleaseVersion}-es${esMajor}"
+def javaReleaseVersion = esMajor == '9' ? 21 : 17
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(javaReleaseVersion)
+    targetCompatibility = JavaVersion.toVersion(javaReleaseVersion)
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.release = javaReleaseVersion
+}
+
+esplugin {
+    name 'uzbek-analyzer-plugin'
+    description 'Cross-script Uzbek text analysis for Elasticsearch (Latin-1995 / Latin-2026 / Cyrillic / Arabic)'
+    licenseFile rootProject.file('LICENSE')
+    noticeFile rootProject.file('NOTICE.txt')
+}
+
+group 'org.tocharian'
+version pluginArtifactVersion
+
+tasks.withType(Zip) {
+    archiveBaseName = 'uzbek-analyzer-plugin'
+    archiveVersion = pluginArtifactVersion
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly "org.elasticsearch.plugin:elasticsearch-plugin-api:${elasticsearchVersion}"
+    compileOnly "org.elasticsearch.plugin:elasticsearch-plugin-analysis-api:${elasticsearchVersion}"
+    compileOnly "org.apache.lucene:lucene-core:${luceneVersion}"
+    compileOnly "org.apache.lucene:lucene-analysis-common:${luceneVersion}"
+
+    testImplementation "org.apache.lucene:lucene-core:${luceneVersion}"
+    testImplementation "org.apache.lucene:lucene-analysis-common:${luceneVersion}"
+    testImplementation ('junit:junit:4.13.2') { exclude group: 'org.hamcrest' }
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+}

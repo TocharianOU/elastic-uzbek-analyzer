@@ -1,0 +1,101 @@
+# Russian loanwords whose ENDING collides with an Uzbek inflectional affix.
+#
+# These are stem-locked, not fully protected: "telefonlar" must still reduce to
+# "telefon", but "zaryadka" must NOT reduce to "zaryad" — its final -ka is part
+# of the Russian stem, while -ka is also the Uzbek dative allomorph after a
+# voiceless stop. Layer 4 may strip affixes AFTER these stems; it may not cut
+# into them.
+#
+# The -ka / -kа family is the dangerous one and is listed most fully. Words with
+# harmless endings are included only where they are frequent enough in catalogue
+# text to be worth an early exit.
+#
+# SEED LIST from general knowledge of Uzbek e-commerce vocabulary, not from a
+# real catalogue. Extend from live data.
+
+# -- -ka endings: collide with dative -ka ---------------------------------
+zaryadka
+rozetka
+upakovka
+kolonka
+podstavka
+nasadka
+lampochka
+kartochka
+kryshka
+ruchka
+setka
+tarelka
+korobka
+knopka
+plyonka
+vilka
+provodka
+stiralka
+kofevarka
+mikrovolnovka
+zapravka
+pristavka
+podsvetka
+vspyshka
+zashchitka
+perenoska
+udlinitelka
+shapka
+kurtka
+sumka
+bluzka
+yubka
+
+# -- -lar / -lik / -chi lookalikes ----------------------------------------
+kalkulyator
+akkumulyator
+ventilyator
+regulyator
+stabilizator
+aksessuar
+
+# -- high-frequency electronics stems -------------------------------------
+telefon
+smartfon
+planshet
+noutbuk
+kompyuter
+monitor
+klaviatura
+naushnik
+chexol
+kabel
+adapter
+zaryadnik
+printer
+skaner
+televizor
+xolodilnik
+muzlatgich
+pylesos
+changyutgich
+utyug
+dazmol
+fen
+blender
+mikser
+chaynik
+multivarka
+duxovka
+plita
+konditsioner
+ventilyatsiya
+radiator
+mikrofon
+kamera
+obektiv
+shtativ
+karta
+fleshka
+disk
+protsessor
+videokarta
+materinka
+korpus
+kuler
