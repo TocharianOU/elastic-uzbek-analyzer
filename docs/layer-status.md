@@ -100,6 +100,31 @@ word is `davlat`, and `کېلهجگی` gives `kelhjgi` for `kelajagi`. Perso-Ara
 listings therefore match each other reliably and the other scripts only when the
 skeleton happens to carry its vowels.
 
+## Emitting alternatives for recorded ambiguities — measured, and declined
+
+`NormalizedForm` records where the input genuinely underdetermines the reading,
+and nothing downstream consumes it. That looked like an unfinished feature: a
+token filter could emit each alternative at the same position and widen recall.
+Measuring it first killed it.
+
+The case it was meant to fix is Cyrillic `е`, which becomes `ye` word-initially.
+`Елена` folds to `yelena` while a Latin `Elena` folds to `elena`, so the two
+never meet. But for native Uzbek words the two scripts already agree without any
+help — `ел`/`yel`, `ер`/`yer`, `етти`/`yetti`, `европа`/`yevropa` all fold to the
+same key today — because Uzbek Latin writes the glide too. The mismatch is
+confined to foreign proper nouns spelled without it, which Layer 3 protects
+anyway.
+
+Against that, the lexicon holds **37 pairs where `yeX` and `eX` are both real and
+different words**: `yel` wind / `el` people, `yem` fodder / `em` cure, `yeng`
+sleeve / `eng` most, `yer` earth / `er` husband. Folding the two together would
+merge every one of them.
+
+So the cure costs more than the disease, and the field stays as it is: recorded
+for inspection and for the `cyrillic.unmapped` leak guard, not acted on. The same
+reasoning is why the tse alternation was fixed with a positional rule rather than
+by emitting both readings.
+
 ## Layer 3 — protection
 
 Two levels, because the failure modes differ. A brand or model code must survive
@@ -286,6 +311,8 @@ column 1 by filename is wrong: `Verbs.csv` lists `abad` as the stem behind
 - **Offsets assume NFC input.** `srcIndex` is measured after NFC; NFC is
   length-preserving for pre-composed Latin and Cyrillic, but decomposed input
   would shift offsets. Put an `icu_normalizer` upstream if that matters.
+- **Ambiguity alternatives are recorded but never emitted.** Deliberate; see the
+  section above for the measurement.
 - **`sʼh` needs the tutuq belgisi.** `Isʼhoq` correctly yields `ishoq`, but a
   user who omits the tutuq gets `işoq` and will not match. Undecidable without
   a lexicon; L4's business.
