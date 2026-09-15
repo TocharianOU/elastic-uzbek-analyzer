@@ -147,6 +147,33 @@ public class UzNormalizerTests {
         assertEquals(key("stansiya"), key("\u0441\u0442\u0430\u043D\u0446\u0438\u044F"));
     }
 
+    /**
+     * The Perso-Arabic path is transliteration, not decipherment. Short vowels are
+     * often unwritten, so it recovers a consonant skeleton and guesses the rest.
+     * What it does get right is whether و and ی are consonants or vowels, which is
+     * what the source table got wrong everywhere.
+     */
+    @Test
+    public void persoArabicResolvesMatresLectionisByPosition() {
+        // قوپقوغی — و after a consonant is a vowel, so this reaches the same key
+        // as the Latin and Cyrillic spellings rather than "qvpqvgʻi"
+        assertEquals("qopqogi", key("\u0642\u0648\u067E\u0642\u0648\u063A\u06CC"));
+        // بویوک — the ی follows a و that resolved to a vowel, so it is the consonant y
+        assertEquals("boyok", key("\u0628\u0648\u06CC\u0648\u06A9"));
+    }
+
+    @Test
+    public void persoArabicKeepsItsOffsetMap() {
+        String w = "\u0627\u06C9\u0632\u0628\u06D0\u06A9\u0633\u062A\u0627\u0646";
+        NormalizedForm f = UzNormalizer.normalize(w);
+        int[] ix = f.srcIndex();
+        assertEquals(f.internal().length(), ix.length);
+        for (int i = 0; i < ix.length; i++) {
+            assertTrue("offset out of range", ix[i] >= 0 && ix[i] < w.length());
+            if (i > 0) assertTrue("offset went backwards", ix[i] >= ix[i - 1]);
+        }
+    }
+
     private static void assertAllEqual(String expected, String... spellings) {
         for (String s : spellings) assertEquals(s, expected, key(s));
     }

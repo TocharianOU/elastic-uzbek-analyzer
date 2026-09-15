@@ -36,4 +36,9 @@ src/main/resources/uz_morph/stem-allomorphs.tsv is generated from
 UzbekInflectionalWords by Maksud Sharipov et al., used under the MIT License.
 https://github.com/MaksudSharipov/UzbekInflectionalWords
 
+The Perso-Arabic transliteration table in
+src/main/java/org/tocharian/uzbek/script/ArabicScript.java is derived from the
+Lutfiy project by Tahrirchi, used under the MIT License. Independent
+implementation. https://github.com/tahrirchi/uzs-scripts
+
 brands.txt and loanwords.txt are seed lists compiled for this project.

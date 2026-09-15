@@ -270,21 +270,34 @@ public final class UzNormalizer {
     // ------------------------------------------------------------ Arabic
 
     /**
-     * Perso-Arabic script, ISO 639-3 {@code uzs}. Not implemented yet: it needs
-     * vowel restoration from an unvocalised abjad, ZWNJ handling and
-     * presentation-form folding, which is a layer of work on its own. Passed
-     * through unchanged and flagged so nothing downstream mistakes it for
-     * normalized text.
+     * Perso-Arabic, ISO 639-3 {@code uzs}.
+     *
+     * <p>Transliterated to the 1995 Latin orthography first, then folded by the
+     * Latin path, so there is one set of rules for {@code oʻ}, {@code sh} and the
+     * rest rather than two that could drift apart. The two offset maps are
+     * composed, so a highlight still lands on the original Perso-Arabic.
+     *
+     * <p>Lossy by nature: the script is an abjad and short vowels are often
+     * unwritten, so a consonant skeleton can stand for several words. The result
+     * is flagged as such — worth having, because it makes such a listing findable
+     * at all, but not the equal of the Latin and Cyrillic paths.
      */
     private static void foldArabic(String s, StringBuilder out, List<Integer> src,
                                   List<NormalizedForm.Ambiguity> amb) {
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '‌' || c == '‍' || c == '​') continue;  // ZWNJ / ZWJ / ZWSP
-            emit(out, src, c, i);
+        ArabicScript.Transliteration t = ArabicScript.toLatin(s);
+
+        StringBuilder latinOut = new StringBuilder(t.latin().length());
+        List<Integer> latinSrc = new ArrayList<>(t.latin().length());
+        foldLatin(t.latin(), latinOut, latinSrc, amb);
+
+        for (int i = 0; i < latinOut.length(); i++) {
+            int viaLatin = latinSrc.get(i);
+            int original = viaLatin < t.srcIndex().length ? t.srcIndex()[viaLatin] : 0;
+            emit(out, src, latinOut.charAt(i), original);
         }
-        amb.add(new NormalizedForm.Ambiguity(0, "uz-Arab", List.of("not-implemented"),
-                "arabic.passthrough"));
+
+        amb.add(new NormalizedForm.Ambiguity(0, out.toString(), List.of("unwritten-vowels"),
+                "arabic.transliterated"));
     }
 
     /** Per-character dispatch for strings that genuinely mix scripts. */

@@ -22,7 +22,11 @@ public enum ScriptId {
     /** Uzbek Cyrillic: marked by {@code ў қ ғ ҳ}. */
     UZ_CYRL(true),
 
-    /** Perso-Arabic script, as used for the {@code uzs} variety. */
+    /**
+     * Perso-Arabic script, as used for the {@code uzs} variety. Transliterated
+     * through the 1995 Latin orthography, which is lossy: the script is an abjad
+     * and short vowels are often unwritten.
+     */
     UZ_ARAB(true),
 
     /** Cyrillic that carries Russian-only letters {@code ы щ} — must NOT be stemmed as Uzbek. */

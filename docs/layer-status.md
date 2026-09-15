@@ -20,7 +20,7 @@ java -cp $CP org.tocharian.uzbek.dev.ScaleTest stems.txt
 | Layer | Class | State |
 |---|---|---|
 | L0 identify | `script.ScriptDetector` | done |
-| L1 normalize | `script.UzNormalizer`, `Homoglyphs`, `Apostrophes` | done (Latin + Cyrillic); Perso-Arabic passthrough |
+| L1 normalize | `script.UzNormalizer`, `Homoglyphs`, `Apostrophes`, `ArabicScript` | done; Perso-Arabic transliterated, lossily |
 | L2 tokenize | `tokenize.UzbekTokenizer` | done |
 | L3 protect | `protect.ProtectionMarker` | done (seed word lists) |
 | L4 morphology | `morph.UzMorphAnalyzer` | done |
@@ -73,6 +73,32 @@ earned their place as design input and as a cross-check.
 | the Uyghur plugin | `build.gradle` shape, `esplugin` block, group and package conventions | engineering convention only |
 | `uzmorphanalyser` | its 124 non-affixed stems became `function_words.txt` | data, MIT |
 | the other 11 repos | nothing yet | queued for L4 |
+
+## Layer 1 — Perso-Arabic
+
+Transliterated to the 1995 Latin orthography first, then folded by the Latin
+path, so there is one set of rules for `oʻ` and `sh` rather than two that could
+drift. The two offset maps compose, so a highlight still lands on the original.
+
+The mapping comes from the Lutfiy project (MIT). Ported faithfully — the Java
+output is byte-identical to Lutfiy's own — with one correction on top.
+
+`و` and `ی` are *matres lectionis*: each serves as a consonant and as a vowel.
+The source table calls them consonants everywhere, which turns `قوپقوغی` into
+`qvpqvgʻi` and `بویوک` into `bvivk`. Position settles the question — after a
+consonant they are vowels — and the decision is made against the character
+already produced rather than the source letter, because the preceding character
+may itself have been one of the two. With that, all six spellings of "its lid"
+across four scripts reach one key:
+
+```
+qopqogʻi  qopqog'i  qopqogi  qopqoği  қопқоғи  قوپقوغی   ->  qopqogi
+```
+
+What it cannot do is supply an unwritten vowel: `دولت` gives `dolt` where the
+word is `davlat`, and `کېلهجگی` gives `kelhjgi` for `kelajagi`. Perso-Arabic
+listings therefore match each other reliably and the other scripts only when the
+skeleton happens to carry its vowels.
 
 ## Layer 3 — protection
 
@@ -254,7 +280,7 @@ column 1 by filename is wrong: `Verbs.csv` lists `abad` as the stem behind
 
 ## Known limitations
 
-- **Perso-Arabic (`uzs`) is passthrough.** Needs vowel restoration
+- **Perso-Arabic (`uzs`) is transliterated, not deciphered.** Needs vowel restoration
   from an unvocalised abjad plus presentation-form folding. Flagged in the
   result's `ambiguities` so nothing downstream mistakes it for normalized text.
 - **Offsets assume NFC input.** `srcIndex` is measured after NFC; NFC is

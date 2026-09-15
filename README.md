@@ -18,6 +18,8 @@ them:
 | Cyrillic | `қопқоғи` |
 | Perso-Arabic (`uzs`) | قوپقوغی |
 
+All four fold to the same search key.
+
 The Latin apostrophe alone arrives in a dozen spellings, or not at all —
 `qopqogʻi` `qopqog'i` `qopqog'i` `` qopqog`i `` `qopqogi`. All the same word.
 Elasticsearch ships 34 language analyzers and Turkish is the only Turkic one, so
