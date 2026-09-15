@@ -236,10 +236,16 @@ public final class UzNormalizer {
                 case 'ы' -> rep = "i";   // ы (Russian only) — unmapped would leak into the key
                 case 'ь' -> rep = "";    // ь — dropped, see the class note
                 case 'щ' -> rep = "şç"; // щ (Russian only) -> şç
-                case 'ц' -> {            // ц : ts, but s in some loans (цирк -> sirk)
-                    rep = "ts";
-                    amb.add(new NormalizedForm.Ambiguity(out.length(), "ts", List.of("s"),
-                            "cyrillic.tse.loanword"));
+                case 'ц' -> {
+                    // Uzbek writes Russian ц as ts only after a vowel
+                    // (революция -> revolyutsiya) and as s otherwise, both
+                    // word-initially (цирк -> sirk, цемент -> sement) and after
+                    // a consonant (станция -> stansiya). A blanket ts is wrong
+                    // far more often than it is right.
+                    boolean afterVowel = i > 0 && CYR_VOWELS.indexOf(s.charAt(i - 1)) >= 0;
+                    rep = afterVowel ? "ts" : "s";
+                    amb.add(new NormalizedForm.Ambiguity(out.length(), rep,
+                            List.of(afterVowel ? "s" : "ts"), "cyrillic.tse.positional"));
                 }
                 case 'е' -> {            // е : ye word-initially or after a vowel, else e
                     boolean initial = (i == 0) || !Character.isLetter(s.charAt(i - 1));

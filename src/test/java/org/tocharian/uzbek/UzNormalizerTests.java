@@ -128,6 +128,25 @@ public class UzNormalizerTests {
         assertEquals("şahar", key("şahar"));  // ş kept
     }
 
+    /**
+     * Uzbek writes Russian ц as ts only after a vowel, and as s otherwise — both
+     * word-initially and after a consonant. A blanket ts is wrong far more often
+     * than it is right, and gets every one of these except the last.
+     */
+    @Test
+    public void cyrillicTseFollowsThePositionalRule() {
+        assertEquals("sirk",        key("\u0446\u0438\u0440\u043A"));                 // цирк
+        assertEquals("sement",      key("\u0446\u0435\u043C\u0435\u043D\u0442"));   // цемент
+        assertEquals("sex",         key("\u0446\u0435\u0445"));                        // цех
+        assertEquals("stansiya",    key("\u0441\u0442\u0430\u043D\u0446\u0438\u044F")); // станция
+        assertEquals("revolyutsiya",
+                key("\u0440\u0435\u0432\u043E\u043B\u044E\u0446\u0438\u044F"));  // революция
+
+        // which is the point: the Cyrillic and Latin spellings now meet
+        assertEquals(key("sirk"), key("\u0446\u0438\u0440\u043A"));
+        assertEquals(key("stansiya"), key("\u0441\u0442\u0430\u043D\u0446\u0438\u044F"));
+    }
+
     private static void assertAllEqual(String expected, String... spellings) {
         for (String s : spellings) assertEquals(s, expected, key(s));
     }
