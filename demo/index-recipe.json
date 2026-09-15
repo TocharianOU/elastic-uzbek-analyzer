@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "uz_lemma": {
+          "type": "custom",
+          "char_filter": ["uzbek_normalize"],
+          "tokenizer": "uzbek_tokenizer",
+          "filter": ["uzbek_morph"]
+        },
+        "uz_exact": {
+          "type": "custom",
+          "char_filter": ["uzbek_normalize"],
+          "tokenizer": "uzbek_tokenizer"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "uz_lemma",
+        "fields": {
+          "exact": { "type": "text",    "analyzer": "uz_exact" },
+          "raw":   { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "note":   { "type": "text", "index": false },
+      "script": { "type": "keyword" }
+    }
+  }
+}

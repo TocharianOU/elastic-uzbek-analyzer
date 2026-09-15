@@ -1,15 +1,15 @@
 # Elasticsearch Uzbek Analyzer Plugin
 
-Cross-script text analysis for Uzbek: one search key from Latin-1995,
-Latin-2026, Cyrillic and Arabic input.
+[![Build](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml/badge.svg)](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml)
 
-> **Status: work in progress.** Layers 0, 1 and 3 are implemented and measured.
-> Layers 2, 4 and 5 are not written yet, and the plugin does not build as an
-> Elasticsearch artifact — the layers currently run as standalone Java.
+Cross-script text analysis for Uzbek. One search key from Latin-1995,
+Latin-2026 and Cyrillic input, plus morphology, so that a shopper who types
+`qopqogi` finds the listing spelled `қопқоғи`.
 
 ## The problem
 
-Uzbek is written four ways at once, and a product catalogue contains all of them:
+Uzbek is written several ways at once, and a product catalogue contains all of
+them:
 
 | Orthography | "its lid" |
 |---|---|
@@ -18,73 +18,135 @@ Uzbek is written four ways at once, and a product catalogue contains all of them
 | Cyrillic | `қопқоғи` |
 | Perso-Arabic (`uzs`) | قوپقوغی |
 
-The Latin apostrophe alone arrives in a dozen spellings, or not at all:
-`qopqogʻi` `qopqog'i` `qopqog'i` `qopqog\`i` `qopqogi`. Every one of these is the
-same word and a shopper expects all of them to match. Elasticsearch ships 34
-language analyzers; Turkish is the only Turkic one.
+The Latin apostrophe alone arrives in a dozen spellings, or not at all —
+`qopqogʻi` `qopqog'i` `qopqog'i` `` qopqog`i `` `qopqogi`. All the same word.
+Elasticsearch ships 34 language analyzers and Turkish is the only Turkic one, so
+today each spelling finds only itself.
+
+## Install
+
+```bash
+./gradlew assemble                                    # ES 8.x, Java 17
+./gradlew assemble -PelasticsearchVersion=9.4.0 \
+                   -PluceneVersion=10.4.0 -PesMajor=9  # ES 9.x, Java 21
+
+bin/elasticsearch-plugin install file:///path/to/build/distributions/uzbek-analyzer-plugin-0.1.0-es8.zip
+```
+
+Then restart the node.
+
+## Use
+
+The plugin registers one ready-made analyzer and the pieces to build your own.
+
+| Name | Kind | What it does |
+|---|---|---|
+| `uzbek` | analyzer | the whole chain, root only |
+| `uzbek_split` | analyzer | the whole chain, root plus affixes |
+| `uzbek_normalize` | char filter | fold any orthography to the internal form |
+| `uzbek_tokenizer` | tokenizer | apostrophes are letters, model codes stay whole |
+| `uzbek_morph` | token filter | protect, then reduce to the root |
+| `uzbek_morph_split` | token filter | protect, then emit root and affixes |
+
+```
+GET _analyze
+{ "analyzer": "uzbek", "text": "Телефон учун қопқоғи" }
+-> telefon  ucun  qopqoq
+
+GET _analyze
+{ "analyzer": "uzbek", "text": "Telefon uchun qopqogʻi" }
+-> telefon  ucun  qopqoq
+```
+
+### Recommended mapping
+
+Three fields, because over-stemming a product name is worse than missing a
+morphological variant. Recall comes from the analyzed field, precision from the
+others.
+
+```json
+{
+  "settings": { "analysis": { "analyzer": {
+    "uz_lemma": { "type": "custom", "char_filter": ["uzbek_normalize"],
+                  "tokenizer": "uzbek_tokenizer", "filter": ["uzbek_morph"] },
+    "uz_exact": { "type": "custom", "char_filter": ["uzbek_normalize"],
+                  "tokenizer": "uzbek_tokenizer" }
+  } } },
+  "mappings": { "properties": { "title": {
+    "type": "text", "analyzer": "uz_lemma",
+    "fields": {
+      "exact": { "type": "text",    "analyzer": "uz_exact" },
+      "raw":   { "type": "keyword", "ignore_above": 256 }
+    }
+  } } }
+}
+```
+
+Query all three and let the exact ones outrank:
+
+```json
+{ "query": { "bool": { "should": [
+  { "match": { "title":       { "query": "qopqogi" } } },
+  { "match": { "title.exact": { "query": "qopqogi", "boost": 3 } } },
+  { "term":  { "title.raw":   { "value": "qopqogi", "boost": 10 } } }
+] } } }
+```
+
+The analyzer must run at query time too. Cross-script matching works because
+both sides are folded by the same function, not because either side is special.
 
 ## Architecture
 
 ```
-L0  identify   which orthography, and is it Uzbek or Russian
-L1  normalize  fold everything to one internal form, keep an offset map
+L0  identify   which orthography; Uzbek Cyrillic or Russian
+L1  normalize  fold to one internal form, keep an offset map
 L2  tokenize   apostrophes are letters; model codes stay whole
 L3  protect    mark what morphology must not touch
-L4  morphology root + affix chain, lemma and split views
-L5  recipe     three-field index mapping
+L4  morphology strip a validated affix; restore the root
+L5  recipe     the three-field mapping above
 ```
 
-Each layer is a pure function with its own test entry point, so it can be
-measured before the layer above exists.
+Every layer is a pure function with its own tests, so each can be measured
+before the one above it exists.
 
-## Measured so far
+## Measured
 
-On 42,869 distinct stems from a curated Uzbek lexicon:
+35 tests, and against 57,807 stems from a curated Uzbek lexicon:
 
 | | |
 |---|---|
-| Normalization throughput | ~500k stems/sec, single-threaded |
+| Normalization | ~500k tokens/sec, single-threaded |
 | Cross-script fold | every spelling of a word collapses to one key |
-| Fold collision cost | 0.97% (35% better than blanket diacritic stripping) |
-| L3 false protection | ~0 after lexicon-based brand exemption |
+| Fold collision cost | 0.97%, versus 1.50% for blanket diacritic stripping |
+| Layer 3 false protection | ~0 after lexicon-based brand exemption |
 
-```
-qopqogʻi  qopqog'i  qopqog'i  qopqog`i  qopqogi  qopqoği  қопқоғи  ->  qopqogi
-Oʻzbekiston  O'zbekiston  Ozbekiston  Özbekiston  Ўзбекистон       ->  ozbekiston
-```
+See [docs/layer-status.md](docs/layer-status.md) for the numbers, the reasoning
+behind each decision, and the known limitations.
 
-See [docs/layer-status.md](docs/layer-status.md) for the full numbers, the
-design decisions behind them, and the known limitations.
+## Try it
 
-## Running the layers
-
-No Elasticsearch or Lucene needed for L0–L3.
+[demo/](demo/) brings up Elasticsearch and Kibana with ten listings written
+every which way.
 
 ```bash
-javac -encoding UTF-8 -d build/dev $(find src/main/java src/test/java -name '*.java')
-
-# all layers, or one: l0 | l1 | fold | leaks | homoglyph | offsets | l3
-java -cp build/dev:src/main/resources org.tocharian.uzbek.dev.LayerCli
-
-# measurement against a real lexicon (one stem per line)
-java -cp build/dev:src/main/resources org.tocharian.uzbek.dev.ScaleTest stems.txt
+docker compose -f demo/docker-compose.yml up -d
+./gradlew assemble && demo/install-plugin.sh
+demo/load.sh
+demo/search.sh qopqogi
 ```
 
 ## Word lists
 
-`src/main/resources/uz_lex/` holds the lists Layer 3 consults.
+`src/main/resources/uz_lex/` and `uz_morph/`.
 
-- `brands.txt`, `loanwords.txt` — **seed lists**, compiled from general
-  knowledge of the Uzbek market, not from a real catalogue. Extend them from
-  live listing data.
-- `function_words.txt` — words that never take an affix, from UzMorphAnalyser.
-- `brand-exemptions.txt` — **generated, do not hand-edit.** Brands that are also
-  real Uzbek dictionary stems, which are deliberately left unprotected: `uzum` is
-  a marketplace and the word for grape, `Бош` (Bosch) folds to `bosh` "head",
-  `Olcha` to `olcha` "cherry". Protecting those would delete a common noun from
-  search. Regenerate with `org.tocharian.uzbek.dev.GenerateBrandExemptions`
-  after editing `brands.txt`.
+- `brands.txt`, `loanwords.txt` — **seed lists**, compiled from general knowledge
+  of the Uzbek market rather than from a real catalogue. Extend them from live
+  listing data.
+- `function_words.txt` — words that never take an affix.
+- `brand-exemptions.txt`, `roots.tsv`, `affixes.tsv`, `stem-allomorphs.tsv` —
+  **generated, do not hand-edit.** Regenerate with the tools in
+  `org.tocharian.uzbek.dev`.
 
 ## Licence
 
-Apache 2.0. See [NOTICE.txt](NOTICE.txt) for the linguistic resources used.
+Apache 2.0. [NOTICE.txt](NOTICE.txt) lists the linguistic resources used.

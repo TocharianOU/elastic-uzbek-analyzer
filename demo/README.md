@@ -1,35 +1,28 @@
 # Local demo
 
-Ten Uzbek product listings, indexed twice: once the way Elasticsearch handles
-them today, and once through the Layer 1 search key. The gap between the two
-columns is what this plugin is for.
+Ten Uzbek product listings, written every which way, indexed through the real
+plugin.
 
 ## Run it
 
 ```bash
-docker compose -f demo/docker-compose.yml up -d     # ES on :9200, Kibana on :5601
-javac -encoding UTF-8 -d build/dev $(find src/main/java src/test/java -name '*.java')
-java -cp build/dev:src/main/resources org.tocharian.uzbek.dev.BuildDemoIndex
-
-curl -XPUT localhost:9200/products -H 'Content-Type: application/json' -d @demo/mapping.json
-curl -XPOST 'localhost:9200/products/_bulk?refresh=true' \
-     -H 'Content-Type: application/x-ndjson' --data-binary @demo/bulk.ndjson
-
-./demo/compare.sh qopqogi
+docker compose -f demo/docker-compose.yml up -d   # ES :9200, Kibana :5601
+./gradlew assemble
+demo/install-plugin.sh                            # install and restart the node
+demo/load.sh                                      # create the index, load 10 docs
+demo/search.sh qopqogi
 ```
 
-512m heap each; measured use is ~970 MB for Elasticsearch and ~650 MB for
+512m heap each; measured use is about 1.0 GB for Elasticsearch and 650 MB for
 Kibana. Security is disabled — a throwaway node on localhost, nothing more.
-
 Tear down with `docker compose -f demo/docker-compose.yml down -v`.
 
-Elasticsearch data lives in a named volume. Without one, recreating the
-container — which `docker compose up -d` does after any change to its settings —
-wipes the data directory, including the `.kibana*` system indices. Kibana still
-believes its migration ran, so it serves `500 Internal Server Error` with
-`Saved object [space/default] not found` in the logs. If that happens, restart
-Kibana (`docker restart uz-kibana`) and it re-migrates, then re-index the demo
-documents.
+Elasticsearch data lives in a named volume. Without one, any change to the
+container settings recreates it and wipes the data directory, taking the
+`.kibana*` system indices with it. Kibana does not notice — it still believes its
+migration ran — and serves `500 Internal Server Error` with
+`Saved object [space/default] not found` buried in the logs. If that happens,
+`docker restart uz-kibana` and re-run `demo/load.sh`.
 
 ## The ten documents
 
@@ -46,36 +39,41 @@ documents.
 | 9 | Oʻzbekiston shaharlari xaritasi kitobi | oʻ in an ordinary Uzbek word |
 | 10 | Zaryadkalar va kabellar toʻplami Baseus | inflected Russian loanword |
 
-Documents 1–4 are the same product described four ways. A shopper typing any
-one of those spellings expects all four.
+Documents 1–4 are one product described four ways. A shopper typing any of those
+spellings expects all four.
 
-## Results
+## What the queries show
 
-`./demo/compare.sh <query>`
+`demo/search.sh <query>`
 
-| query | today | with the key | what it shows |
-|---|---:|---:|---|
-| `qopqogi` | 1 | **4** | the lazy spelling finds every variant, Cyrillic included |
-| `qopqogʻi` | 1 | **4** | so does the correct one |
-| `қопқоғи` | 1 | **4** | and the Cyrillic one |
-| `chexol` | 0 | **1** | a Latin query reaches a Cyrillic listing |
-| `чехол` | 1 | 1 | unchanged, as it should be |
-| `shaffof` | 1 | 1 | unchanged: no ambiguity to resolve |
-| `kel` | 0 | **1** | finds the listing with the hidden Cyrillic е |
+| query | hits | |
+|---|---:|---|
+| `qopqogi` | 4 | the lazy spelling finds every variant, Cyrillic included |
+| `qopqogʻi` | 4 | so does the correct one |
+| `қопқоғи` | 4 | and the Cyrillic one |
+| `kitoblar` | 1 | morphology: the plural query finds `kitobi` |
+| `telefonlar` | 2 | reaches both the Latin and the Cyrillic listing |
+| `chexol` | 1 | a Latin query reaches a Cyrillic listing |
+| `kel` | 1 | finds the listing with the hidden Cyrillic е |
 
-The last row is the one worth dwelling on. Document 8 looks completely ordinary;
-its `Kеl` carries a Cyrillic е that no human proofreader will catch. Today that
-listing is unreachable by any query a customer would type. Nothing in the
+Document 8 is the one worth dwelling on. It looks completely ordinary; its `Kеl`
+carries a Cyrillic `е` that no proofreader will catch. Without the plugin that
+listing is unreachable by any query a customer would type, and nothing in the
 Elasticsearch logs says so.
 
-## What is being demonstrated
+Ranking comes from the three-field recipe in `index-recipe.json`: recall from the
+analyzed field, precision from `title.exact`, and an exact-term boost on
+`title.raw`. An exactly-spelled match outranks a merely-normalized one.
 
-Layers 2 and 4 do not exist yet, so the plugin cannot be installed. The Layer 1
-key is computed by the same production code path
-(`UzNormalizer.normalize(...).searchKey()`) and indexed as its own field, which
-is exactly what the char_filter will emit. Column A is a real Elasticsearch
-baseline, not a strawman: `standard` is what an Uzbek catalogue gets today.
+## Files
 
-Query-side normalization is the other half — `compare.sh` runs the query through
-the same function before searching. Index and query must agree, or none of this
-works.
+| | |
+|---|---|
+| `docker-compose.yml` | ES + Kibana, 512m heap each |
+| `products.tsv` | the ten listings and why each is there |
+| `bulk-plain.ndjson` | bulk body, raw titles — the plugin does the work |
+| `index-recipe.json` | the three-field mapping |
+| `install-plugin.sh` | install the built zip into the running node |
+| `load.sh` | create the index and load the documents |
+| `search.sh` | query all three fields with descending boost |
+| `compare.sh` | side-by-side against a `standard`-analyzer baseline |

@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - es: "8.7.0"
+            lucene: "9.5.0"
+            java: "17"
+          - es: "9.4.0"
+            lucene: "10.4.0"
+            java: "21"
+    name: Elasticsearch ${{ matrix.es }} (Java ${{ matrix.java }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        run: >
+          ./gradlew test
+          -PelasticsearchVersion=${{ matrix.es }}
+          -PluceneVersion=${{ matrix.lucene }}
+
+      - name: Assemble plugin
+        run: >
+          ./gradlew assemble
+          -PelasticsearchVersion=${{ matrix.es }}
+          -PluceneVersion=${{ matrix.lucene }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uzbek-analyzer-plugin-es${{ matrix.es }}
+          path: build/distributions/*.zip
+
+      - name: Publish test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-es${{ matrix.es }}
+          path: build/reports/tests/test

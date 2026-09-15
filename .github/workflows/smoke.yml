@@ -1,0 +1,67 @@
+name: Smoke test against a real Elasticsearch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the plugin
+        run: ./gradlew assemble
+
+      # A unit test cannot catch a bad plugin descriptor, a missing resource in
+      # the packaged jar, or a component that fails to register. Installing it
+      # into a real node can.
+      - name: Start Elasticsearch with the plugin installed
+        run: |
+          set -eux
+          ZIP=$(ls build/distributions/*.zip)
+          docker run -d --name es \
+            -e discovery.type=single-node \
+            -e xpack.security.enabled=false \
+            -e ES_JAVA_OPTS="-Xms512m -Xmx512m" \
+            -p 9200:9200 \
+            docker.elastic.co/elasticsearch/elasticsearch:8.19.15
+          until curl -fs localhost:9200/_cluster/health >/dev/null; do sleep 3; done
+          docker cp "$ZIP" es:/tmp/plugin.zip
+          docker exec es bin/elasticsearch-plugin install --batch file:///tmp/plugin.zip
+          docker restart es
+          until curl -fs localhost:9200/_cluster/health >/dev/null; do sleep 3; done
+          curl -s 'localhost:9200/_cat/plugins?v'
+
+      - name: Latin and Cyrillic must produce the same terms
+        run: |
+          set -eux
+          terms() {
+            curl -sf localhost:9200/_analyze -H 'Content-Type: application/json' \
+              -d "{\"analyzer\":\"uzbek\",\"text\":\"$1\"}" \
+            | python3 -c 'import sys,json;print(" ".join(t["token"] for t in json.load(sys.stdin)["tokens"]))'
+          }
+          LAT=$(terms "Telefon uchun qopqogʻi")
+          CYR=$(terms "Телефон учун қопқоғи")
+          echo "latin:    $LAT"
+          echo "cyrillic: $CYR"
+          test "$LAT" = "$CYR"
+
+      - name: Model codes must survive whole
+        run: |
+          set -eux
+          curl -sf localhost:9200/_analyze -H 'Content-Type: application/json' \
+            -d '{"analyzer":"uzbek","text":"SM-G998B 128GB"}' \
+          | grep -q 'sm-g998b'
+
+      - name: Elasticsearch logs on failure
+        if: failure()
+        run: docker logs es | tail -100

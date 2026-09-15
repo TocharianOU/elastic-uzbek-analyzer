@@ -19,4 +19,17 @@ U+0219 distinction, follow the analysis published in the alifbo project
 (MIT License). No code from that project is used here.
 https://github.com/azakapro/alifbo
 
+src/main/resources/uz_morph/roots.tsv is generated from the
+UzbekLemmaStems-POS-Dataset by Maksud Sharipov et al., used under the
+Apache License 2.0.
+https://github.com/MaksudSharipov/UzbekLemmaStems-POS-Dataset
+
+src/main/resources/uz_morph/affixes.tsv is generated from the affix inventory
+of UzMorphAnalyser by Ulugbek Salaev, used under the MIT License.
+https://github.com/UlugbekSalaev/UzMorphAnalyser
+
+src/main/resources/uz_morph/stem-allomorphs.tsv is generated from
+UzbekInflectionalWords by Maksud Sharipov et al., used under the MIT License.
+https://github.com/MaksudSharipov/UzbekInflectionalWords
+
 brands.txt and loanwords.txt are seed lists compiled for this project.
