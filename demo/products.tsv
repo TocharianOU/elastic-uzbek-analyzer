@@ -1,0 +1,10 @@
+1	Samsung Galaxy A54 uchun silikon qopqogʻi qora	qopqoq / Latin-1995, correct U+02BB
+2	Xiaomi Redmi Note 12 qopqog'i shaffof	qopqoq / ASCII apostrophe
+3	Telefon uchun qopqogi himoya plyonkasi bilan	qopqoq / apostrophe omitted
+4	Телефон учун қопқоғи кўк рангли	qopqoq / Cyrillic
+5	Чехол для телефона Samsung силиконовый	Russian, must not be stemmed as Uzbek
+6	Noutbuk uchun sumka Lenovo IdeaPad Slim 15	brand not in lexicon + model
+7	Apple iPhone 15 Pro Max 256GB qulay narxda	brand in lexicon + model codes
+8	Kеl va koʻring: Artel muzlatgich yangi	stray Cyrillic е inside a Latin word
+9	Oʻzbekiston shaharlari xaritasi kitobi	oʻ in a plain Uzbek word
+10	Zaryadkalar va kabellar toʻplami Baseus	inflected Russian loanword

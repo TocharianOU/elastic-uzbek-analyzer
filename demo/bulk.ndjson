@@ -1,0 +1,20 @@
+{"index":{"_id":"1"}}
+{"title":"Samsung Galaxy A54 uchun silikon qopqogʻi qora","title_uz":"samsung galaxy a54 ucun silikon qopqogi qora","internal":"samsung galaxy a54 uçun silikon qopqoği qora","script":"UZ_LATN_1995","protected":"Galaxy:BRAND A54:DIGIT uchun:FUNCTION_WORD","note":"qopqoq / Latin-1995, correct U+02BB"}
+{"index":{"_id":"2"}}
+{"title":"Xiaomi Redmi Note 12 qopqog'i shaffof","title_uz":"xiaomi redmi note 12 qopqogi şaffof","internal":"xiaomi redmi note 12 qopqoği şaffof","script":"UZ_LATN_1995","protected":"Redmi:BRAND 12:DIGIT","note":"qopqoq / ASCII apostrophe"}
+{"index":{"_id":"3"}}
+{"title":"Telefon uchun qopqogi himoya plyonkasi bilan","title_uz":"telefon ucun qopqogi himoya plyonkasi bilan","internal":"telefon uçun qopqogi himoya plyonkasi bilan","script":"LATN_UNDETERMINED","protected":"Telefon:LOANWORD_STEM uchun:FUNCTION_WORD plyonkasi:LOANWORD_STEM bilan:FUNCTION_WORD","note":"qopqoq / apostrophe omitted"}
+{"index":{"_id":"4"}}
+{"title":"Телефон учун қопқоғи кўк рангли","title_uz":"telefon ucun qopqogi kok rangli","internal":"telefon uçun qopqoği kök rangli","script":"UZ_CYRL","protected":"Телефон:LOANWORD_STEM учун:FUNCTION_WORD","note":"qopqoq / Cyrillic"}
+{"index":{"_id":"5"}}
+{"title":"Чехол для телефона Samsung силиконовый","title_uz":"cexol dlya telefona samsung silikonoviy","internal":"çexol dlya telefona samsung silikonoviy","script":"MIXED","protected":"Чехол:LOANWORD_STEM телефона:LOANWORD_STEM силиконовый:RUSSIAN_SCRIPT","note":"Russian, must not be stemmed as Uzbek"}
+{"index":{"_id":"6"}}
+{"title":"Noutbuk uchun sumka Lenovo IdeaPad Slim 15","title_uz":"noutbuk ucun sumka lenovo ideapad slim 15","internal":"noutbuk uçun sumka lenovo ideapad slim 15","script":"LATN_UNDETERMINED","protected":"Noutbuk:LOANWORD_STEM uchun:FUNCTION_WORD sumka:LOANWORD_STEM Lenovo:BRAND IdeaPad:BRAND 15:DIGIT","note":"brand not in lexicon + model"}
+{"index":{"_id":"7"}}
+{"title":"Apple iPhone 15 Pro Max 256GB qulay narxda","title_uz":"apple iphone 15 pro max 256gb qulay narxda","internal":"apple iphone 15 pro max 256gb qulay narxda","script":"LATN_UNDETERMINED","protected":"15:DIGIT 256GB:DIGIT","note":"brand in lexicon + model codes"}
+{"index":{"_id":"8"}}
+{"title":"Kеl va koʻring: Artel muzlatgich yangi","title_uz":"kel va koring: artel muzlatgic yangi","internal":"kel va köring: artel muzlatgiç yangi","script":"UZ_LATN_1995","protected":"va:FUNCTION_WORD muzlatgich:LOANWORD_STEM","note":"stray Cyrillic е inside a Latin word"}
+{"index":{"_id":"9"}}
+{"title":"Oʻzbekiston shaharlari xaritasi kitobi","title_uz":"ozbekiston şaharlari xaritasi kitobi","internal":"özbekiston şaharlari xaritasi kitobi","script":"UZ_LATN_1995","protected":"","note":"oʻ in a plain Uzbek word"}
+{"index":{"_id":"10"}}
+{"title":"Zaryadkalar va kabellar toʻplami Baseus","title_uz":"zaryadkalar va kabellar toplami baseus","internal":"zaryadkalar va kabellar töplami baseus","script":"UZ_LATN_1995","protected":"Zaryadkalar:LOANWORD_STEM va:FUNCTION_WORD kabellar:LOANWORD_STEM Baseus:BRAND","note":"inflected Russian loanword"}
