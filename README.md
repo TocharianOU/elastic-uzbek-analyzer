@@ -2,6 +2,9 @@
 
 [![Build](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml/badge.svg)](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml)
 [![Smoke test](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/smoke.yml/badge.svg)](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/smoke.yml)
+[![English](https://img.shields.io/badge/Language-English-blue)](README.md)
+[![Oʻzbekcha](https://img.shields.io/badge/Til-O%CA%BBzbekcha-1eb53a)](README_uz.md)
+[![Downloads](https://img.shields.io/github/downloads/TocharianOU/elastic-uzbek-analyzer/total)](https://github.com/TocharianOU/elastic-uzbek-analyzer/releases)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-blue)](LICENSE)
 
 Uzbek text analysis for Elasticsearch. Four writing systems fold to one search
@@ -29,9 +32,40 @@ apostrophe appears in **four different codepoints and the correct one not once**
 
 ## Install
 
-Grab the zip for your Elasticsearch major version from
-[Releases](https://github.com/TocharianOU/elastic-uzbek-analyzer/releases), or
-build it:
+One line. Pick the one matching your Elasticsearch major version, then restart
+the node.
+
+```bash
+# Elasticsearch 8.x
+bin/elasticsearch-plugin install https://github.com/TocharianOU/elastic-uzbek-analyzer/releases/latest/download/uzbek-analyzer-plugin-es8.zip
+```
+
+```bash
+# Elasticsearch 9.x
+bin/elasticsearch-plugin install https://github.com/TocharianOU/elastic-uzbek-analyzer/releases/latest/download/uzbek-analyzer-plugin-es9.zip
+```
+
+Those URLs always resolve to the newest release, so they stay correct and there
+is no version number to keep up to date. Checksums are published beside each
+asset; specific versions are on the
+[Releases](https://github.com/TocharianOU/elastic-uzbek-analyzer/releases) page.
+
+Docker needs the same command inside the image:
+
+```bash
+docker exec -it <container> bin/elasticsearch-plugin install --batch \
+  https://github.com/TocharianOU/elastic-uzbek-analyzer/releases/latest/download/uzbek-analyzer-plugin-es8.zip
+docker restart <container>
+```
+
+Check it took:
+
+```bash
+curl localhost:9200/_cat/plugins?v
+```
+
+<details>
+<summary>Building from source instead</summary>
 
 ```bash
 # Elasticsearch 8.x — Java 17, the committed Gradle wrapper
@@ -40,14 +74,14 @@ build it:
 # Elasticsearch 9.x — Java 21 or later, which needs Gradle 8.x. The wrapper is
 # 7.6.1 and cannot run on Java 21 ("Unsupported class file major version").
 gradle assemble -PesMajor=9 -PelasticsearchVersion=9.4.0 -PluceneVersion=10.4.0
+
+bin/elasticsearch-plugin install file://$PWD/build/distributions/uzbek-analyzer-plugin-0.1.0-es8.zip
 ```
 
-```bash
-bin/elasticsearch-plugin install file:///path/to/uzbek-analyzer-plugin-0.1.0-es8.zip
-```
+</details>
 
-Then restart the node. Built against 8.7.0 and 9.4.0; CI also installs the 8.x
-artifact on 8.19.15, since the stable plugin API is meant to carry across a major.
+Built against 8.7.0 and 9.4.0. CI also installs the 8.x artifact on 8.19.15,
+since the stable plugin API is meant to carry across a major.
 
 ## Use
 
@@ -191,6 +225,16 @@ rebuilt by the tools in `org.tocharian.uzbek.dev` and should not be hand-edited 
 `brand-exemptions.txt` in particular must be regenerated together with
 `roots.tsv`, since a brand is exempted from protection on the promise that
 Layer 4 knows it as a root.
+
+## Contributing
+
+The two most useful things:
+
+1. **Real product titles.** A few thousand listing titles is all it takes to
+   tune the brand and loanword lists properly, which is the largest single gap.
+2. **Fixing the Uzbek README.** [README_uz.md](README_uz.md) has not been
+   reviewed by a native speaker. If something reads wrong or stilted, an issue
+   or a pull request is very welcome.
 
 ## Changelog
 

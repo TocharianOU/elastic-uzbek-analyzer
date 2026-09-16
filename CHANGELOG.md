@@ -28,6 +28,12 @@ Java 21). CI also installs the 8.x artifact on 8.19.15.
 - Reduces inflected forms by lookup against a 37,762-entry attested table, then
   by validated affix stripping.
 
+### Install
+
+Version-less artifacts are published alongside the versioned ones, so
+`releases/latest/download/uzbek-analyzer-plugin-es8.zip` stays valid across
+releases and the README has no version number to keep up to date.
+
 ### Known limits
 
 The brand and loanword lists are seeds compiled from general knowledge rather

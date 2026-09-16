@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build assets for"
+        required: true
+
+# Every release publishes each artifact twice: once with the version in the name,
+# and once without. The version-less copy is what
+#   releases/latest/download/uzbek-analyzer-plugin-es8.zip
+# resolves to, and that URL only keeps working if the name never changes. It is
+# the one the README tells people to install, so it must not be forgotten.
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - es-major: "8"
+            elasticsearch: "8.7.0"
+            lucene: "9.5.0"
+            java: "17"
+          - es-major: "9"
+            elasticsearch: "9.4.0"
+            lucene: "10.4.0"
+            java: "24"
+    name: Elasticsearch ${{ matrix.es-major }}.x
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Build and test
+        run: |
+          set -euo pipefail
+          # The committed wrapper is Gradle 7.6.1, which cannot run on Java 21 or
+          # later. The 9.x leg fetches a Gradle that can.
+          if [ "${{ matrix.es-major }}" = "9" ]; then
+            curl -fsSL https://services.gradle.org/distributions/gradle-8.14-bin.zip -o /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp
+            GRADLE=/tmp/gradle-8.14/bin/gradle
+          else
+            GRADLE=./gradlew
+          fi
+          "$GRADLE" clean check assemble \
+            -PesMajor=${{ matrix.es-major }} \
+            -PelasticsearchVersion=${{ matrix.elasticsearch }} \
+            -PluceneVersion=${{ matrix.lucene }}
+
+      - name: Name each artifact twice, and checksum both
+        id: pack
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          VERSIONED=$(ls build/distributions/*.zip)
+          cp "$VERSIONED" dist/
+          cp "$VERSIONED" "dist/uzbek-analyzer-plugin-es${{ matrix.es-major }}.zip"
+          cd dist
+          for f in *.zip; do sha256sum "$f" > "$f.sha256"; done
+          ls -la
+
+      - name: Install the built plugin on a real node
+        run: |
+          set -euxo pipefail
+          ZIP=dist/uzbek-analyzer-plugin-es${{ matrix.es-major }}.zip
+          docker run -d --name es -p 9200:9200 \
+            -e discovery.type=single-node \
+            -e xpack.security.enabled=false \
+            -e ES_JAVA_OPTS="-Xms512m -Xmx512m" \
+            -v "$PWD/$ZIP:/tmp/plugin.zip:ro" \
+            docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.elasticsearch }} \
+            bash -lc 'bin/elasticsearch-plugin install --batch file:///tmp/plugin.zip && exec bin/elasticsearch'
+          for _ in $(seq 1 90); do
+            if curl -fsS 'localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS 'localhost:9200/_cat/plugins?v' | grep -q uzbek-analyzer-plugin
+          # An artifact that cannot do the one thing it exists for is not shippable.
+          LAT=$(curl -fsS localhost:9200/_analyze -H 'Content-Type: application/json' \
+                 --data-binary '{"analyzer":"uzbek","text":"Telefon uchun qopqogʻi"}' \
+                | python3 -c 'import sys,json;print(" ".join(t["token"] for t in json.load(sys.stdin)["tokens"]))')
+          CYR=$(curl -fsS localhost:9200/_analyze -H 'Content-Type: application/json' \
+                 --data-binary '{"analyzer":"uzbek","text":"Телефон учун қопқоғи"}' \
+                | python3 -c 'import sys,json;print(" ".join(t["token"] for t in json.load(sys.stdin)["tokens"]))')
+          test "$LAT" = "$CYR"
+          test "$LAT" = "telefon ucun qopqoq"
+          docker rm -f es
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/*
+          fail_on_unmatched_files: true
