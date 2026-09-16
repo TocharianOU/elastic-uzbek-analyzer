@@ -9,6 +9,11 @@ on:
         description: "Existing tag to (re)build assets for"
         required: true
 
+# The repository gives workflow tokens read access by default, and creating a
+# release and uploading its assets needs write access to contents.
+permissions:
+  contents: write
+
 # Every release publishes each artifact twice: once with the version in the name,
 # and once without. The version-less copy is what
 #   releases/latest/download/uzbek-analyzer-plugin-es8.zip
