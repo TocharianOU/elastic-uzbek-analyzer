@@ -1,8 +1,5 @@
 # Elasticsearch Uzbek Analyzer
 
-[![Build](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml/badge.svg)](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/build.yml)
-[![Smoke test](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/smoke.yml/badge.svg)](https://github.com/TocharianOU/elastic-uzbek-analyzer/actions/workflows/smoke.yml)
-[![English](https://img.shields.io/badge/Language-English-blue)](README.md)
 [![Oʻzbekcha](https://img.shields.io/badge/Til-O%CA%BBzbekcha-1eb53a)](README_uz.md)
 [![Downloads](https://img.shields.io/github/downloads/TocharianOU/elastic-uzbek-analyzer/total)](https://github.com/TocharianOU/elastic-uzbek-analyzer/releases)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-blue)](LICENSE)
