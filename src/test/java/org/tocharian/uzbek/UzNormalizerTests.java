@@ -82,6 +82,28 @@ public class UzNormalizerTests {
     }
 
     /**
+     * The internal form keeps Russian ы and щ distinguishable, and the search key
+     * folds them exactly as before, so index terms do not change.
+     */
+    @Test
+    public void russianLettersAreMarkedInTheInternalFormOnly() {
+        NormalizedForm f = UzNormalizer.normalize("новый щетка");
+        assertEquals("novıy ŝetka", f.internal());
+        assertEquals("noviy şcetka", f.searchKey());
+    }
+
+    /** Each run of a script is folded by that script's table, whatever the field is mostly written in. */
+    @Test
+    public void everyScriptRunIsFoldedByItsOwnTable() {
+        assertEquals("samsung galaxy qopqogi telefon",
+                key("Samsung Galaxy qopqogʻi телефон"));
+        assertEquals("telefon ucun qopqogi qopqogi",
+                key("Телефон учун қопқоғи qopqog'i"));
+        assertEquals("samsung qopqogi",
+                key("Samsung \u0642\u0648\u067E\u0642\u0648\u063A\u06CC"));
+    }
+
+    /**
      * Core verb stems in a curated 46k lexicon carry a Cyrillic 'е' among Latin
      * letters. They normalize cleanly but classify as mixed script, so morphology
      * is skipped and no ordinary query can reach them.

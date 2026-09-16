@@ -26,7 +26,7 @@ import java.util.Set;
  * <p>Uzbek is agglutinative, so {@code kitoblarimizda} and {@code kitob} are the
  * same product to a shopper. Recall depends on them reaching the same term.
  *
- * <p>Analysis is table-first. A 118k-entry inflection table, compiled by a
+ * <p>Analysis is table-first. A 37,762-entry inflection table, compiled by a
  * linguist, is consulted before any rule runs; the rules exist to handle what is
  * missing from it rather than to re-derive what it already states. Verb lemmas in
  * that table are normalised to the bare stem rather than the {@code -moq}
@@ -153,7 +153,7 @@ public final class UzMorphAnalyzer {
             if (row.length < 2) continue;
             allomorphs.put(row[0], List.of(row[1].split(",")));
         }
-        // Lemma strings are pooled: 118k forms share 31k lemmas, so holding one
+        // Lemma strings are pooled: 37,762 forms share 5,819 lemmas, so holding one
         // instance of each rather than one per row is most of the footprint.
         Map<String, String> pool = new HashMap<>();
         for (String[] row : load(FORMS)) {

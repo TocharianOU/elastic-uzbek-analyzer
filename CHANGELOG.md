@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Words spelled with `ch` are stemmed again. The token filter read the script
+  off the search key, where `ç` has become `c`, and locked every such word as
+  foreign: `chiroqlar`, `choynaklar`, `muzlatgichlar` never reduced to their
+  root. 7,345 roots of the lexicon were affected.
+- Russian words are recognised inside the plugin. `ы` and `щ` now survive the
+  char filter as `ı` and `ŝ`, so `щетка` is no longer cut by the Uzbek dative
+  rule. Index terms are unchanged.
+- A minority script inside a field is folded. Script is decided per run, so a
+  Cyrillic word in a Latin title, or a Perso-Arabic word next to a Latin brand,
+  reaches the same terms as everywhere else.
+- In a Cyrillic title, a Latin word with an apostrophe no longer has its last
+  letter turned into Cyrillic `і`.
+- A model-code run such as `Max/256GB` also emits its word, `max`, at the same
+  position.
+
+### Reindexing
+
+Titles containing `ch`, mixed scripts or joined model codes produce different
+terms. Reindex those fields to pick up the fix; other documents are unaffected.
+
 ## 0.1.0 — 2026-09-16
 
 First release. Cross-script Uzbek analysis for Elasticsearch: Latin 1995, the

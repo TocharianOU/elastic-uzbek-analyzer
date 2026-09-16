@@ -32,6 +32,11 @@ public final class ScriptDetector {
     private static final String RU_CYRL_MARKERS = "ыщ";               // ы щ
     // -- 2026 Latin reform letters (also the internal form) -------------
     private static final String LATN_2026_MARKERS = "öğşçș"; // ö ğ ş ç ș
+    // -- Latin letters no Uzbek orthography has --------------------------
+    // ı and ŝ never come from Uzbek text. The normalizer writes Russian ы and щ
+    // as these two, so the evidence that a token is Russian survives folding to
+    // Latin and can still be seen when the token filter runs.
+    private static final String NON_UZBEK_LATIN = "ıŝ";      // ı ŝ
 
     private ScriptDetector() {}
 
@@ -79,6 +84,7 @@ public final class ScriptDetector {
 
             if (c >= 'a' && c <= 'z') latin++;
             else if (LATN_2026_MARKERS.indexOf(c) >= 0) latin++;
+            else if (NON_UZBEK_LATIN.indexOf(c) >= 0) latin++;
             else if (c >= 'Ѐ' && c <= 'ӿ') cyrillic++;
             else if (isArabicLetter(c)) arabic++;
             else if (Character.isDigit(c)) digit++;
@@ -115,9 +121,12 @@ public final class ScriptDetector {
             else                                { id = ScriptId.CYRL_AMBIGUOUS; conf *= 0.5; }
         } else {
             conf = (double) latin / letters;
-            if (n26 > 0 && n95 == 0)          id = ScriptId.UZ_LATN_2026;
+            // The negative test runs first. A letter no Uzbek orthography has is
+            // proof, while ö ğ ş ç are only a hint: çicago carries a 2026 letter
+            // and is still not Uzbek.
+            if (hasNonUzbekLatin(lower))      id = ScriptId.LATN_OTHER;
+            else if (n26 > 0 && n95 == 0)     id = ScriptId.UZ_LATN_2026;
             else if (n95 > 0)                 id = ScriptId.UZ_LATN_1995;
-            else if (hasNonUzbekLatin(lower)) id = ScriptId.LATN_OTHER;
             else                              { id = ScriptId.LATN_UNDETERMINED; conf *= 0.5; }
         }
 
@@ -132,7 +141,12 @@ public final class ScriptDetector {
      * <p>Uzbek Latin is {@code a b d e f g h i j k l m n o p q r s t u v x y z}
      * plus {@code oʻ gʻ sh ch ng}. There is no {@code w}, and no standalone
      * {@code c} — {@code c} occurs only inside the {@code ch} digraph. Either
-     * one proves the string is not Uzbek.
+     * one proves the string is not Uzbek. So do {@code ı} and {@code ŝ}, which
+     * the normalizer uses to carry Russian {@code ы} and {@code щ}.
+     *
+     * <p>This only holds on raw text or on the internal form, where {@code ç} is
+     * still a letter of its own. On the search key {@code ç} has become {@code c},
+     * and every word spelled with {@code ch} would read as foreign.
      *
      * <p>Deliberately NOT a positive test. {@code q}, {@code x}, {@code sh},
      * {@code ng} were tried as positive Uzbek evidence and are worthless:
@@ -144,6 +158,7 @@ public final class ScriptDetector {
         for (int i = 0; i < lower.length(); i++) {
             char c = lower.charAt(i);
             if (c == 'w') return true;
+            if (NON_UZBEK_LATIN.indexOf(c) >= 0) return true;
             if (c == 'c') {
                 boolean partOfCh = i + 1 < lower.length() && lower.charAt(i + 1) == 'h';
                 if (!partOfCh) return true;

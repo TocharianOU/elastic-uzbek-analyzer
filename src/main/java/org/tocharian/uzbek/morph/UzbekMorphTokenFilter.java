@@ -9,12 +9,16 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.tocharian.uzbek.protect.Protection;
 import org.tocharian.uzbek.protect.ProtectionMarker;
 import org.tocharian.uzbek.protect.ProtectionVerdict;
+import org.tocharian.uzbek.script.ScriptDetector;
+import org.tocharian.uzbek.script.ScriptId;
 import org.tocharian.uzbek.script.UzNormalizer;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Layers 3 and 4 as a Lucene token filter.
@@ -73,13 +77,22 @@ public final class UzbekMorphTokenFilter extends TokenFilter {
         String token = termAttr.toString();
         if (keywordAttr.isKeyword()) return true;
 
-        // The token arrives in the internal form; the lists and lexicon are keyed
-        // on the search key, so fold the last step here.
-        String key = UzNormalizer.toSearchKey(token);
-        ProtectionVerdict guard = protection.check(key);
+        // The token arrives in the internal form, where ç is still distinct from
+        // c and Russian ы щ are still marked. That is the only place the script
+        // can be read correctly, so detect here, then fold the last step to the
+        // search key that the lists and the lexicon are keyed on.
+        //
+        // Lower-casing is repeated for a filter placed after a tokenizer other
+        // than uzbek_tokenizer. The rest of the fold is not: it needs the
+        // uzbek_normalize char filter upstream, and re-folding already folded
+        // text is not idempotent.
+        String internal = token.toLowerCase(Locale.ROOT);
+        ScriptId script = ScriptDetector.detect(internal).script();
+        String key = UzNormalizer.toSearchKey(internal);
+        ProtectionVerdict guard = protection.checkKey(key, script);
         Analysis analysis = morphology.analyze(key, guard);
 
-        if (guard.level() != org.tocharian.uzbek.protect.Protection.NONE) {
+        if (guard.level() != Protection.NONE) {
             keywordAttr.setKeyword(true);
         }
 

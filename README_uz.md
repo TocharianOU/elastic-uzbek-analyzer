@@ -82,7 +82,7 @@ GET _analyze
 | `uzbek_split` | analizator | toʻliq zanjir, oʻzak va qoʻshimchalar |
 | `uzbek_normalize` | char filter | har qanday yozuvni ichki shaklga keltiradi |
 | `uzbek_tokenizer` | tokenizator | apostrof harf hisoblanadi, model kodlari buzilmaydi |
-| `uzbek_morph` | token filter | himoyalaydi, soʻng oʻzakka qaytaradi |
+| `uzbek_morph` | token filter | himoyalaydi, soʻng oʻzakka qaytaradi; oldidan `uzbek_normalize` kerak |
 | `uzbek_morph_split` | token filter | himoyalaydi, oʻzak va qoʻshimchalarni beradi |
 
 ### Tavsiya etilgan mapping

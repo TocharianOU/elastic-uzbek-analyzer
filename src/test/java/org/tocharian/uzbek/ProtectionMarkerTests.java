@@ -5,6 +5,7 @@
 package org.tocharian.uzbek;
 
 import org.junit.Test;
+import org.tocharian.uzbek.script.ScriptDetector;
 import org.tocharian.uzbek.protect.Protection;
 import org.tocharian.uzbek.protect.ProtectionMarker;
 import org.tocharian.uzbek.protect.ProtectionVerdict;
@@ -76,6 +77,20 @@ public class ProtectionMarkerTests {
         assertEquals(Protection.STEM_LOCKED, level("zaryadkani"));
         assertEquals(Protection.STEM_LOCKED, level("telefonlar"));
         assertEquals("telefon", PM.check("telefonlar").matched());
+    }
+
+    /**
+     * The token filter path: script read on the internal form, lists on the key.
+     * Words spelled with ch must stay open, or loanword-locked where listed.
+     */
+    @Test
+    public void checkKeyTakesTheScriptFromTheInternalForm() {
+        assertEquals(Protection.NONE,
+                PM.checkKey("ciroqlar", ScriptDetector.detect("çiroqlar").script()).level());
+        assertEquals(Protection.STEM_LOCKED,
+                PM.checkKey("cexollar", ScriptDetector.detect("çexollar").script()).level());
+        assertEquals(ProtectionVerdict.Reason.NON_UZBEK_LETTER,
+                PM.checkKey("şcetka", ScriptDetector.detect("ŝetka").script()).reason());
     }
 
     @Test

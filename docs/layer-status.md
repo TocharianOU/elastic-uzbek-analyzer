@@ -4,7 +4,7 @@ Each layer is a pure function with its own test entry point, so it can be
 measured before the plugin exists. Run one at a time:
 
 ```bash
-./gradlew test        # 35 JUnit tests across every layer
+./gradlew test        # 54 JUnit tests across every layer
 ./gradlew assemble    # build/distributions/uzbek-analyzer-plugin-*.zip
 ```
 
@@ -381,3 +381,40 @@ If a hand-curated lexicon is this inconsistent, catalogue text is worse.
    Found by cross-checking our hand-written table against `alifbo`'s. Fixed, and
    a leak guard now records any surviving Cyrillic codepoint as an
    `cyrillic.unmapped` ambiguity so the same class of gap cannot be silent again.
+4. **The token filter read the script off the search key, and locked every word
+   spelled with `ch`.** The key writes `ç` as `c`, and a standalone `c` is the
+   sound proof that a word is not Uzbek. So `chiroqlar`, `choynaklar`,
+   `muzlatgichlar` and `чироқлар` were all given `FULL` protection and never
+   stemmed. The measurements above missed it because they call
+   `ProtectionMarker.check` on raw text, where `ch` is still two letters; only
+   the plugin path went through the key. On the root lexicon, 7,557 of 62,478
+   single-word roots were locked, 7,345 of them for this reason alone; after the
+   fix 236 are, and every one left is a function word, a listed loanword or a
+   word with `w`. Of the 3,797 attested forms spelled with `ch`, the analyzer
+   reached the gold lemma for 367 before and 3,794 after.
+
+   The fix reads the script on the internal form, where `ç` is still its own
+   letter, and hands it to `ProtectionMarker.checkKey`. The detector also runs
+   its negative test first now, since `çicago` carries a 2026 letter and is
+   still not Uzbek.
+5. **Russian could not be recognised inside the plugin.** `ы` and `щ` were folded
+   to `i` and `şç` by the char filter, so by the time the token filter asked
+   whether a token was Russian the evidence was gone: `щетка` was cut to `şcet`
+   by the Uzbek dative rule. The internal form now carries them as `ı` and `ŝ`,
+   letters no Uzbek orthography uses, and only the search key folds them to `i`
+   and `şc`. Index terms are unchanged.
+6. **Script was decided per field, not per run.** A field that was 85% one script
+   was folded entirely by that script's table. A Cyrillic `телефон` in a Latin
+   title stayed Cyrillic, a Perso-Arabic word next to a Latin brand passed through
+   untransliterated, and in a Cyrillic title the `i` of `qopqog'i` was "repaired"
+   into Cyrillic `і`, because the homoglyph pass split words at the apostrophe.
+   Each run of Cyrillic, Perso-Arabic or other text is now folded by its own
+   table, and an apostrophe between letters is part of the word.
+7. **A model-code run swallowed the word attached to it.** `Max/256GB` indexed
+   only `max/256gb`, so `max` did not find it. Letter-only pieces of three or
+   more characters are now also emitted, at the same position as the whole run.
+
+Every other output is unchanged. Across all 65,727 roots, 37,762 attested forms
+and the demo titles, the only differences before and after these fixes are words
+spelled with `ch`, six lexicon entries that contained `ı`, `ы` or `щ`, and one
+hyphenated entry with a digit.

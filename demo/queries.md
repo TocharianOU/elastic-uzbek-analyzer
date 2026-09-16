@@ -56,6 +56,7 @@ GET products/_search
 | `telefon` / `telefonlar` | 3 hits: 3, 4, 11 | Latin, Cyrillic and Perso-Arabic |
 | `zaryadka` / `zaryadkalar` | 1 hit: 10 | doc 10 says `Zaryadkalar` |
 | `kabel` | 1 hit: 10 | doc 10 says `kabellar` |
+| `muzlatgichlar` | 1 hit: 8 | doc 8 says `muzlatgich`; any word with `ch` stems like the rest |
 
 `zaryadka` is the one to watch. Its `-ka` is Russian stem material and also the
 Uzbek dative allomorph, so a naive stemmer would cut it to `zaryad` and stop

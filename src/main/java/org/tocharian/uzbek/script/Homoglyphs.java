@@ -24,7 +24,6 @@ package org.tocharian.uzbek.script;
  */
 public final class Homoglyphs {
 
-    /** Cyrillic letters that are visually identical to a Latin letter, and that Latin letter. */
     /**
      * Cyrillic letters that are visually identical to a Latin letter AT LOWERCASE,
      * and that Latin letter. Repair runs after case folding, so only lowercase
@@ -87,8 +86,13 @@ public final class Homoglyphs {
                 i++;
                 continue;
             }
+            // An apostrophe between two letters is part of the word: oʻ and gʻ are
+            // letters. Splitting there left the i of qopqog'i as a word of its
+            // own, with no evidence, so a Cyrillic context turned it into і.
             int j = i;
-            while (j < n && Character.isLetter(s.charAt(j))) j++;
+            while (j < n && (Character.isLetter(s.charAt(j))
+                    || (Apostrophes.isApostrophe(s.charAt(j))
+                        && j + 1 < n && Character.isLetter(s.charAt(j + 1))))) j++;
             String word = s.substring(i, j);
 
             int latinOnly = 0, cyrillicOnly = 0;

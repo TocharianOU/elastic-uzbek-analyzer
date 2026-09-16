@@ -98,7 +98,7 @@ GET _analyze
 | `uzbek_split` | analyzer | the whole chain, root plus affixes |
 | `uzbek_normalize` | char filter | fold any orthography to the internal form |
 | `uzbek_tokenizer` | tokenizer | apostrophes are letters, model codes stay whole |
-| `uzbek_morph` | token filter | protect, then reduce to the root |
+| `uzbek_morph` | token filter | protect, then reduce to the root; expects `uzbek_normalize` upstream |
 | `uzbek_morph_split` | token filter | protect, then emit root and affixes |
 
 ### Recommended mapping
@@ -159,7 +159,7 @@ numbers, the reasoning behind each decision, and what was tried and rejected.
 
 ## Measured
 
-45 tests. The corpora differ by what is being measured, so each is named.
+54 tests. The corpora differ by what is being measured, so each is named.
 
 | | |
 |---|---|
@@ -167,6 +167,7 @@ numbers, the reasoning behind each decision, and what was tried and rejected.
 | Cross-script fold | every spelling of a word reaches one key |
 | Fold collision cost | 0.97% of 42,869 stems, against 1.50% for blanket diacritic stripping |
 | Layer 3 false protection | 368 of 42,869 stems (0.86%), all of them intended |
+| Roots locked in the plugin | 236 of 62,478 single-word roots, all function words, listed loanwords or foreign letters |
 | Layer 4, rules alone | 63.2% against the 37,762-form attested table, held out |
 | Layer 4 over-decomposition | 292 of 65,727 roots (0.44%) |
 | Tables in heap | ~15.6 MB, loaded once and shared |

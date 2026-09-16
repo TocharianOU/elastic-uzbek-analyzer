@@ -34,6 +34,19 @@ import java.util.Locale;
  * leaving it unmapped lets a Cyrillic character survive into the key, and no
  * Latin query can ever produce it.
  *
+ * <p>Script is decided per run of characters, not per field. A catalogue title
+ * such as {@code Samsung Galaxy qopqogʻi телефон} is mostly Latin, and a
+ * field-level verdict would fold the Cyrillic word with the Latin rules, which
+ * leaves it Cyrillic and unreachable by any Latin query. Each run of Cyrillic,
+ * Perso-Arabic or other text therefore goes through its own table, and the
+ * field-level {@link ScriptId} is kept only as a description of the input.
+ *
+ * <p>Russian {@code ы} and {@code щ} are written into the internal form as
+ * {@code ı} and {@code ŝ}, letters no Uzbek orthography uses, and fold to
+ * {@code i} and {@code şc} only in the search key. That is what lets the token
+ * filter still see that a token is Russian after the char filter has made it
+ * Latin. The terms in the index are the same as before.
+ *
  * <p>Locale note: normalization uses {@link Locale#ROOT}, never Turkish.
  * Uzbek Latin has no dotless {@code ı}, so Turkish casing rules would corrupt
  * every {@code i}.
@@ -56,7 +69,10 @@ public final class UzNormalizer {
         return normalize(input, ScriptDetector.detect(probe).script());
     }
 
-    /** Fold using a known orthography (use when Layer 0 ran at a coarser granularity). */
+    /**
+     * Fold, recording {@code script} as the source orthography. The fold itself
+     * does not depend on it: every run of characters is folded by its own script.
+     */
     public static NormalizedForm normalize(String input, ScriptId script) {
         if (input == null || input.isEmpty()) {
             return new NormalizedForm("", "", "", script, new int[0], List.of());
@@ -75,12 +91,9 @@ public final class UzNormalizer {
         List<Integer> src = new ArrayList<>(nfc.length());
         List<NormalizedForm.Ambiguity> amb = new ArrayList<>();
 
-        switch (script) {
-            case UZ_CYRL, RU_CYRL, CYRL_AMBIGUOUS -> foldCyrillic(nfc, out, src, amb);
-            case UZ_ARAB                           -> foldArabic(nfc, out, src, amb);
-            case MIXED                             -> foldMixed(nfc, out, src, amb);
-            default                                -> foldLatin(nfc, out, src, amb);
-        }
+        // The script argument only labels the result. Folding is decided run by
+        // run, so a minority script inside a field is folded by its own table.
+        foldRuns(nfc, out, src, amb);
 
         String internal = out.toString();
 
@@ -111,6 +124,10 @@ public final class UzNormalizer {
      * <p>{@code ş} is deliberately kept. {@code sh} is a digraph, never written with
      * an apostrophe, so users do not mistype it — folding it to {@code s} would add
      * collisions ({@code bosh} "head" vs {@code bos} "press") for no recall gain.
+     *
+     * <p>Because {@code ç} becomes {@code c} here, the key must never be used to
+     * decide which script or language a token is in. Run {@link ScriptDetector}
+     * on the internal form instead.
      */
     public static String toSearchKey(String internal) {
         StringBuilder sb = new StringBuilder(internal.length());
@@ -120,6 +137,8 @@ public final class UzNormalizer {
                 case 'ö' -> sb.append('o');            // ö -> o
                 case 'ğ' -> sb.append('g');            // ğ -> g
                 case 'ç' -> sb.append('c');            // ç -> c   (collision-free)
+                case 'ı' -> sb.append('i');            // Russian ы, see the class note
+                case 'ŝ' -> sb.append("şc");           // Russian щ
                 case Apostrophes.TUTUQ, Apostrophes.TURNED_COMMA -> { /* drop */ }
                 default -> sb.append(c);
             }
@@ -131,8 +150,14 @@ public final class UzNormalizer {
 
     private static void foldLatin(String s, StringBuilder out, List<Integer> src,
                                  List<NormalizedForm.Ambiguity> amb) {
-        int n = s.length();
-        int i = 0;
+        foldLatin(s, 0, s.length(), out, src, amb);
+    }
+
+    /** Fold {@code s[from, to)}. Look-ahead stops at {@code to}. */
+    private static void foldLatin(String s, int from, int to, StringBuilder out, List<Integer> src,
+                                 List<NormalizedForm.Ambiguity> amb) {
+        int n = to;
+        int i = from;
         while (i < n) {
             char c = s.charAt(i);
 
@@ -193,10 +218,14 @@ public final class UzNormalizer {
     private static final String CYR_VOWELS = "аеёиоуўэюя";
     // а е ё и о у ў э ю я
 
-    private static void foldCyrillic(String s, StringBuilder out, List<Integer> src,
+    /**
+     * Fold {@code s[from, to)}. The positional rules for {@code е} and {@code ц}
+     * look at the character before, and read it from the whole string, so a
+     * word is not treated as starting where the run happens to start.
+     */
+    private static void foldCyrillic(String s, int from, int to, StringBuilder out, List<Integer> src,
                                      List<NormalizedForm.Ambiguity> amb) {
-        int n = s.length();
-        for (int i = 0; i < n; i++) {
+        for (int i = from; i < to; i++) {
             char c = s.charAt(i);
             String rep;
 
@@ -233,9 +262,9 @@ public final class UzNormalizer {
                 case 'я' -> rep = "ya";  // я
                 case 'э' -> rep = "e";   // э
                 case 'ъ' -> rep = String.valueOf(Apostrophes.TUTUQ); // ъ
-                case 'ы' -> rep = "i";   // ы (Russian only) — unmapped would leak into the key
+                case 'ы' -> rep = "ı";   // ы (Russian only) -> ı, folds to i in the key
                 case 'ь' -> rep = "";    // ь — dropped, see the class note
-                case 'щ' -> rep = "şç"; // щ (Russian only) -> şç
+                case 'щ' -> rep = "ŝ";   // щ (Russian only) -> ŝ, folds to şc in the key
                 case 'ц' -> {
                     // Uzbek writes Russian ц as ts only after a vowel
                     // (революция -> revolyutsiya) and as s otherwise, both
@@ -282,45 +311,61 @@ public final class UzNormalizer {
      * is flagged as such — worth having, because it makes such a listing findable
      * at all, but not the equal of the Latin and Cyrillic paths.
      */
-    private static void foldArabic(String s, StringBuilder out, List<Integer> src,
+    private static void foldArabic(String s, int from, int to, StringBuilder out, List<Integer> src,
                                   List<NormalizedForm.Ambiguity> amb) {
-        ArabicScript.Transliteration t = ArabicScript.toLatin(s);
+        ArabicScript.Transliteration t = ArabicScript.toLatin(s.substring(from, to));
 
         StringBuilder latinOut = new StringBuilder(t.latin().length());
         List<Integer> latinSrc = new ArrayList<>(t.latin().length());
         foldLatin(t.latin(), latinOut, latinSrc, amb);
 
+        int runStart = out.length();
         for (int i = 0; i < latinOut.length(); i++) {
             int viaLatin = latinSrc.get(i);
-            int original = viaLatin < t.srcIndex().length ? t.srcIndex()[viaLatin] : 0;
+            int original = from + (viaLatin < t.srcIndex().length ? t.srcIndex()[viaLatin] : 0);
             emit(out, src, latinOut.charAt(i), original);
         }
 
-        amb.add(new NormalizedForm.Ambiguity(0, out.toString(), List.of("unwritten-vowels"),
-                "arabic.transliterated"));
+        amb.add(new NormalizedForm.Ambiguity(runStart, out.substring(runStart),
+                List.of("unwritten-vowels"), "arabic.transliterated"));
     }
 
-    /** Per-character dispatch for strings that genuinely mix scripts. */
-    private static void foldMixed(String s, StringBuilder out, List<Integer> src,
+    // -------------------------------------------------------------- runs
+
+    private enum Run { CYRILLIC, ARABIC, OTHER }
+
+    /**
+     * Split the input into maximal runs of one script and fold each with its own
+     * table. Spaces, digits and punctuation belong to the OTHER run and pass
+     * through the Latin path unchanged.
+     */
+    private static void foldRuns(String s, StringBuilder out, List<Integer> src,
                                  List<NormalizedForm.Ambiguity> amb) {
-        int i = 0;
         int n = s.length();
+        int i = 0;
         while (i < n) {
-            int j = i;
-            boolean cyr = isCyrillic(s.charAt(i));
-            while (j < n && isCyrillic(s.charAt(j)) == cyr) j++;
-            String run = s.substring(i, j);
-
-            StringBuilder sub = new StringBuilder();
-            List<Integer> subSrc = new ArrayList<>();
-            if (cyr) foldCyrillic(run, sub, subSrc, amb);
-            else     foldLatin(run, sub, subSrc, amb);
-
-            for (int k = 0; k < sub.length(); k++) {
-                emit(out, src, sub.charAt(k), i + subSrc.get(k));
+            Run kind = runOf(s.charAt(i));
+            int j = i + 1;
+            while (j < n && continuesRun(kind, s.charAt(j))) j++;
+            switch (kind) {
+                case CYRILLIC -> foldCyrillic(s, i, j, out, src, amb);
+                case ARABIC   -> foldArabic(s, i, j, out, src, amb);
+                default       -> foldLatin(s, i, j, out, src, amb);
             }
             i = j;
         }
+    }
+
+    private static Run runOf(char c) {
+        if (isCyrillic(c)) return Run.CYRILLIC;
+        if (ArabicScript.isArabicScript(c)) return Run.ARABIC;
+        return Run.OTHER;
+    }
+
+    /** Zero-width joiners shape Perso-Arabic glyphs, so they stay inside that run. */
+    private static boolean continuesRun(Run kind, char c) {
+        if (kind == Run.ARABIC && (c == '\u200B' || c == '\u200C' || c == '\u200D')) return true;
+        return runOf(c) == kind;
     }
 
     private static boolean isCyrillic(char c) {

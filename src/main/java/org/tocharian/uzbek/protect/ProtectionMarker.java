@@ -86,13 +86,39 @@ public final class ProtectionMarker {
     /**
      * Decide how much of {@code token} Layer 4 may analyze.
      *
-     * @param token  a single token, before or after normalization — either works,
-     *               since matching happens on the search key
-     * @param script the Layer 0 verdict for this token
+     * @param token  a single token in any orthography; it is normalized here
+     * @param script the Layer 0 verdict for this token, taken on the raw token
      */
     public ProtectionVerdict check(String token, ScriptId script) {
         if (token == null || token.isEmpty()) return ProtectionVerdict.OPEN;
+        ProtectionVerdict byScript = byScript(token, script);
+        if (byScript != null) return byScript;
+        return byLists(UzNormalizer.normalize(token, script).searchKey());
+    }
 
+    /**
+     * Decide for a token that is already a Layer 1 search key.
+     *
+     * <p>This is the entry point for the token filter, which receives text the
+     * char filter has already folded. Normalizing it a second time is not
+     * harmless: {@code Isʼhoq} folds to {@code ishoq}, and folding that again
+     * reads the {@code sh} as a digraph.
+     *
+     * @param key    the search key
+     * @param script the Layer 0 verdict, which the caller MUST take on the
+     *               internal form and not on the key. The key has lost the
+     *               difference between {@code ç} and {@code c}, so every word
+     *               spelled with {@code ch} would read as foreign.
+     */
+    public ProtectionVerdict checkKey(String key, ScriptId script) {
+        if (key == null || key.isEmpty()) return ProtectionVerdict.OPEN;
+        ProtectionVerdict byScript = byScript(key, script);
+        if (byScript != null) return byScript;
+        return byLists(key);
+    }
+
+    /** Rules 1-3: decided by the characters alone, no list needed. Null if none fired. */
+    private static ProtectionVerdict byScript(String token, ScriptId script) {
         // 1. Digits. Model codes, capacities and sizes are never words.
         for (int i = 0; i < token.length(); i++) {
             if (Character.isDigit(token.charAt(i))) {
@@ -112,8 +138,11 @@ public final class ProtectionMarker {
             return new ProtectionVerdict(Protection.FULL,
                     ProtectionVerdict.Reason.RUSSIAN_SCRIPT, token);
         }
+        return null;
+    }
 
-        String key = UzNormalizer.normalize(token, script).searchKey();
+    /** Rules 4-6: decided by the word lists, on the search key. */
+    private ProtectionVerdict byLists(String key) {
         if (key.isEmpty()) return ProtectionVerdict.OPEN;
 
         // 4. Known brand, exact match on the whole token — unless the lexicon

@@ -53,6 +53,26 @@ public class ScriptDetectorTests {
         assertEquals(ScriptId.LATN_UNDETERMINED, of("chexol")); // c only inside ch
     }
 
+    /**
+     * On the internal form ç is its own letter, so a word spelled with ch reads as
+     * Uzbek and a standalone c still reads as foreign, even next to a 2026 letter.
+     * On the search key the two are indistinguishable, which is why detection must
+     * never run there.
+     */
+    @Test
+    public void theInternalFormKeepsChApartFromAStandaloneC() {
+        assertEquals(ScriptId.UZ_LATN_2026, of("çexollar"));
+        assertEquals(ScriptId.LATN_OTHER, of("çicago"));
+        assertEquals(ScriptId.LATN_OTHER, of("cexollar"));   // the key: do not detect here
+    }
+
+    /** Russian ы and щ are carried into the internal form as ı and ŝ. */
+    @Test
+    public void russianCarriersReadAsNonUzbek() {
+        assertEquals(ScriptId.LATN_OTHER, of("novıy"));
+        assertEquals(ScriptId.LATN_OTHER, of("ŝetka"));
+    }
+
     @Test
     public void handlesMixedAndNonLinguisticInput() {
         assertEquals(ScriptId.MIXED, of("Ноутбук Lenovo"));
