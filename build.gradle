@@ -13,7 +13,7 @@ apply plugin: 'elasticsearch.stable-esplugin'
 apply plugin: 'elasticsearch.yaml-rest-test'
 
 def esMajor = (findProperty('esMajor') ?: elasticsearchVersion.toString().tokenize('.')[0]).toString()
-def pluginReleaseVersion = (findProperty('pluginReleaseVersion') ?: '0.1.0').toString()
+def pluginReleaseVersion = (findProperty('pluginReleaseVersion') ?: '0.1.1').toString()
 def pluginArtifactVersion = "${pluginReleaseVersion}-es${esMajor}"
 def javaReleaseVersion = esMajor == '9' ? 21 : 17
 

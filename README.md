@@ -72,7 +72,7 @@ curl localhost:9200/_cat/plugins?v
 # 7.6.1 and cannot run on Java 21 ("Unsupported class file major version").
 gradle assemble -PesMajor=9 -PelasticsearchVersion=9.4.0 -PluceneVersion=10.4.0
 
-bin/elasticsearch-plugin install file://$PWD/build/distributions/uzbek-analyzer-plugin-0.1.0-es8.zip
+bin/elasticsearch-plugin install file://$PWD/build/distributions/uzbek-analyzer-plugin-0.1.1-es8.zip
 ```
 
 </details>
