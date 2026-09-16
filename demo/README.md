@@ -75,6 +75,8 @@ other scripts only where the consonant skeleton happens to carry its vowels.
 recommended mapping with descending boost, so an exactly-spelled match outranks a
 merely-normalized one.
 
+A fuller set with expected results is in [queries.md](queries.md).
+
 ## Files
 
 | | |
@@ -87,6 +89,7 @@ merely-normalized one.
 | `load.sh` | create the index and load the documents |
 | `compare.sh` | one query, both analyzers, same index |
 | `search.sh` | the recommended three-field query |
+| `queries.md` | queries to try, with the counts each should return |
 
 Regenerate `bulk-plain.ndjson` after editing `products.tsv`:
 
