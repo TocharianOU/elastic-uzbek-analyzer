@@ -1,4 +1,4 @@
-# Throwaway local demo stack. Ten documents, so it is sized accordingly.
+# Throwaway local demo stack. A handful of documents, so it is sized accordingly.
 # Security is off because this is a single node bound to localhost.
 # Do not copy these settings anywhere that leaves your machine.
 

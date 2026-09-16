@@ -1,20 +1,22 @@
-{"index": {"_id": "1"}}
-{"title": "Samsung Galaxy A54 uchun silikon qopqogʻi qora", "note": "qopqoq / Latin-1995, correct U+02BB"}
-{"index": {"_id": "2"}}
-{"title": "Xiaomi Redmi Note 12 qopqog'i shaffof", "note": "qopqoq / ASCII apostrophe"}
-{"index": {"_id": "3"}}
-{"title": "Telefon uchun qopqogi himoya plyonkasi bilan", "note": "qopqoq / apostrophe omitted"}
-{"index": {"_id": "4"}}
-{"title": "Телефон учун қопқоғи кўк рангли", "note": "qopqoq / Cyrillic"}
-{"index": {"_id": "5"}}
-{"title": "Чехол для телефона Samsung силиконовый", "note": "Russian, must not be stemmed as Uzbek"}
-{"index": {"_id": "6"}}
-{"title": "Noutbuk uchun sumka Lenovo IdeaPad Slim 15", "note": "brand not in lexicon + model"}
-{"index": {"_id": "7"}}
-{"title": "Apple iPhone 15 Pro Max 256GB qulay narxda", "note": "brand in lexicon + model codes"}
-{"index": {"_id": "8"}}
-{"title": "Kеl va koʻring: Artel muzlatgich yangi", "note": "stray Cyrillic е inside a Latin word"}
-{"index": {"_id": "9"}}
-{"title": "Oʻzbekiston shaharlari xaritasi kitobi", "note": "oʻ in a plain Uzbek word"}
-{"index": {"_id": "10"}}
-{"title": "Zaryadkalar va kabellar toʻplami Baseus", "note": "inflected Russian loanword"}
+{"index":{"_id":"1"}}
+{"title":"Samsung Galaxy A54 uchun silikon qopqogʻi qora","note":"qopqoq / Latin-1995, correct U+02BB"}
+{"index":{"_id":"2"}}
+{"title":"Xiaomi Redmi Note 12 qopqog'i shaffof","note":"qopqoq / ASCII apostrophe"}
+{"index":{"_id":"3"}}
+{"title":"Telefon uchun qopqogi himoya plyonkasi bilan","note":"qopqoq / apostrophe omitted"}
+{"index":{"_id":"4"}}
+{"title":"Телефон учун қопқоғи кўк рангли","note":"qopqoq / Cyrillic"}
+{"index":{"_id":"5"}}
+{"title":"Чехол для телефона Samsung силиконовый","note":"Russian, must not be stemmed as Uzbek"}
+{"index":{"_id":"6"}}
+{"title":"Noutbuk uchun sumka Lenovo IdeaPad Slim 15","note":"brand not in lexicon + model"}
+{"index":{"_id":"7"}}
+{"title":"Apple iPhone 15 Pro Max 256GB qulay narxda","note":"brand in lexicon + model codes"}
+{"index":{"_id":"8"}}
+{"title":"Kеl va koʻring: Artel muzlatgich yangi","note":"stray Cyrillic е inside a Latin word"}
+{"index":{"_id":"9"}}
+{"title":"Oʻzbekiston shaharlari xaritasi kitobi","note":"oʻ in a plain Uzbek word"}
+{"index":{"_id":"10"}}
+{"title":"Zaryadkalar va kabellar toʻplami Baseus","note":"inflected Russian loanword"}
+{"index":{"_id":"11"}}
+{"title":"تېلېفون اوچون قوپقوغی","note":"Perso-Arabic: telefon and qopqoq carry across, uchun does not"}

@@ -6,13 +6,19 @@
       "analyzer": {
         "uz_lemma": {
           "type": "custom",
-          "char_filter": ["uzbek_normalize"],
+          "char_filter": [
+            "uzbek_normalize"
+          ],
           "tokenizer": "uzbek_tokenizer",
-          "filter": ["uzbek_morph"]
+          "filter": [
+            "uzbek_morph"
+          ]
         },
         "uz_exact": {
           "type": "custom",
-          "char_filter": ["uzbek_normalize"],
+          "char_filter": [
+            "uzbek_normalize"
+          ],
           "tokenizer": "uzbek_tokenizer"
         }
       }
@@ -24,12 +30,27 @@
         "type": "text",
         "analyzer": "uz_lemma",
         "fields": {
-          "exact": { "type": "text",    "analyzer": "uz_exact" },
-          "raw":   { "type": "keyword", "ignore_above": 256 }
+          "exact": {
+            "type": "text",
+            "analyzer": "uz_exact"
+          },
+          "raw": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "standard": {
+            "type": "text",
+            "analyzer": "standard"
+          }
         }
       },
-      "note":   { "type": "text", "index": false },
-      "script": { "type": "keyword" }
+      "note": {
+        "type": "text",
+        "index": false
+      },
+      "script": {
+        "type": "keyword"
+      }
     }
   }
 }
